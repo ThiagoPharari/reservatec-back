@@ -3,12 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const authRoutes = require('./auth/routes/auth.routes');
 require('./auth/config/passport.config');
 
 const app = express();
 
 // Middleware
+app.use(cookieParser());
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true

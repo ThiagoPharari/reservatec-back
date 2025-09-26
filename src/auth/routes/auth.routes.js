@@ -7,7 +7,10 @@ const router = express.Router();
 // Ruta para iniciar la autenticación con Google
 router.get('/google',
   passport.authenticate('google', {
-    scope: ['email', 'profile']
+    scope: ['email', 'profile'],
+    accessType: 'offline',
+    prompt: 'consent',
+    state: Math.random().toString(36).substring(7)
   })
 );
 
@@ -22,5 +25,11 @@ router.get('/google/callback',
 
 // Ruta para manejar fallos en la autenticación
 router.get('/failure', handleAuthFailure);
+
+// Ruta para cerrar sesión
+router.post('/logout', (req, res) => {
+  res.clearCookie('jwt');
+  res.status(200).json({ message: 'Logged out successfully' });
+});
 
 module.exports = router;

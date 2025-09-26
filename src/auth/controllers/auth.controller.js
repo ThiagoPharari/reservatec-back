@@ -1,15 +1,23 @@
 const jwt = require('jsonwebtoken');
 
 const generateToken = (email) => {
-  return jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1h' });
 };
 
 const handleGoogleCallback = (req, res) => {
   // Generar token con el email del usuario
   const token = generateToken(req.user.email);
   
-  // Redirigir al frontend con el token
-  res.redirect(`${process.env.FRONTEND_URL}/user-info?token=${token}`);
+  // Establecer el token como una cookie http-only
+  res.cookie('jwt', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 3600000 // 1 hora
+  });
+  
+  // Redirigir al frontend
+  res.redirect(`${process.env.FRONTEND_URL}/user-info`);
 };
 
 const handleAuthFailure = (req, res) => {
