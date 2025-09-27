@@ -10,9 +10,10 @@ passport.use(new GoogleStrategy({
     scope: ['email', 'profile']
   },
   function(request, accessToken, refreshToken, profile, done) {
-    // Aquí solo necesitamos el correo del usuario
+    // Guardamos el email y la foto de perfil
     return done(null, {
-      email: profile.email
+      email: profile.email,
+      picture: profile.picture // Google proporciona la URL de la imagen directamente
     });
   }
 ));

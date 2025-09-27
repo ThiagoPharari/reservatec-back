@@ -15,6 +15,16 @@ const handleGoogleCallback = (req, res) => {
     sameSite: 'lax',
     maxAge: 3600000 // 1 hora
   });
+
+  // Establecer la URL de la imagen en una cookie accesible por JavaScript
+  if (req.user.picture) {
+    res.cookie('userPicture', req.user.picture, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 3600000 // 1 hora
+    });
+  }
   
   // Redirigir al frontend
   res.redirect(`${process.env.FRONTEND_URL}/user-info`);
