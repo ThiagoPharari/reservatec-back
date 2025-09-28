@@ -25,6 +25,17 @@ const handleGoogleCallback = (req, res) => {
       maxAge: 3600000 // 1 hora
     });
   }
+
+  // Establecer el correo en una cookie accesible por JavaScript
+  if (req.user.email) {
+    const userData = JSON.stringify({ email: req.user.email });
+    res.cookie('userData', userData, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 3600000 // 1 hora
+    });
+  }
   
   // Redirigir al frontend
   res.redirect(`${process.env.FRONTEND_URL}/user-info`);

@@ -11,9 +11,10 @@ passport.use(new GoogleStrategy({
   },
   function(request, accessToken, refreshToken, profile, done) {
     // Guardamos el email y la foto de perfil
+    console.log('Perfil de Google:', profile);
     return done(null, {
-      email: profile.email,
-      picture: profile.picture // Google proporciona la URL de la imagen directamente
+      email: profile.emails[0].value, // El correo está en profile.emails[0].value
+      picture: profile.photos[0].value // La foto está en profile.photos[0].value
     });
   }
 ));

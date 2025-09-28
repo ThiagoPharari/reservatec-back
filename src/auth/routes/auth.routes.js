@@ -28,7 +28,10 @@ router.get('/failure', handleAuthFailure);
 
 // Ruta para cerrar sesión
 router.post('/logout', (req, res) => {
+  // Limpiar todas las cookies
   res.clearCookie('jwt');
+  res.clearCookie('userPicture');
+  res.clearCookie('userData');
   res.status(200).json({ message: 'Logged out successfully' });
 });
 

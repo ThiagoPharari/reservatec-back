@@ -31,7 +31,11 @@ app.use(passport.initialize());
 // Rutas
 app.use('/auth', authRoutes);
 
-const PORT = 5000;
+// Importar y usar las rutas de usuarios
+const userRoutes = require('./users/routes/user.routes');
+app.use('/api/users', userRoutes);
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
