@@ -41,6 +41,17 @@ class UserService {
         return user[0];
     }
 
+    async checkRegistrationStatus(email) {
+        const [user] = await db.query(
+            'SELECT id_usuario, nombre, apellido, dni, codigo, id_carrera, condicion_med, correo FROM usuarios WHERE correo = ?',
+            [email]
+        );
+        return {
+            isRegistered: user.length > 0,
+            userData: user[0] || null
+        };
+    }
+
     async updateUser(userId, userData) {
         const connection = await db.getConnection();
         try {

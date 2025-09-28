@@ -25,6 +25,30 @@ class UserController {
         }
     }
 
+    async checkRegistrationStatus(req, res) {
+        try {
+            const { email } = req.query;
+            
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El correo electrónico es requerido'
+                });
+            }
+
+            const result = await this.userService.checkRegistrationStatus(email);
+            res.json({
+                success: true,
+                ...result
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
     async getUserById(req, res) {
         try {
             const { userId } = req.params;
