@@ -1,6 +1,6 @@
 const express = require('express');
 const passport = require('passport');
-const { handleGoogleCallback, handleAuthFailure } = require('../controllers/auth.controller');
+const { handleGoogleCallback, handleAuthFailure, handleLogout } = require('../controllers/auth.controller');
 
 const router = express.Router();
 

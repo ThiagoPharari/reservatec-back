@@ -45,7 +45,27 @@ const handleAuthFailure = (req, res) => {
   res.redirect(`${process.env.FRONTEND_URL}?error=auth_failed`);
 };
 
+const handleLogout = (req, res) => {
+  try {
+    // Limpiar las cookies
+    res.clearCookie('jwt');
+    res.clearCookie('userPicture');
+    res.clearCookie('userData');
+    
+    res.json({
+      success: true,
+      message: 'Logout exitoso'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al cerrar sesión'
+    });
+  }
+};
+
 module.exports = {
   handleGoogleCallback,
-  handleAuthFailure
+  handleAuthFailure,
+  handleLogout
 };
