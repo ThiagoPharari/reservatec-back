@@ -41,6 +41,14 @@ app.use('/api/users', userRoutes);
 const reservationRoutes = require('./reservations/routes/reservation.routes');
 app.use('/api/reservations', reservationRoutes);
 
+// Importar y usar las rutas de áreas
+const areaRoutes = require('./sports-areas/routes/area.routes');
+app.use('/api/areas', areaRoutes);
+
+// Importar y usar las rutas de dashboard
+const dashboardRoutes = require('./dashboard/routes/dashboard.routes');
+app.use('/api/dashboard', dashboardRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

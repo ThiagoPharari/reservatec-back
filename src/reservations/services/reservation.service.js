@@ -67,6 +67,46 @@ class ReservationService {
 
             const userId = usuario[0].id_usuario;
 
+            // NUEVA VALIDACIÓN: Verificar que el área esté habilitada
+            const [area] = await connection.query(
+                'SELECT habilitada FROM Areas WHERE id_area = ?',
+                [reservaData.id_area]
+            );
+
+            if (area.length === 0) {
+                throw new Error('Área no encontrada');
+            }
+
+            if (!area[0].habilitada) {
+                throw new Error('El área deportiva no está disponible en este momento. Por favor, contacta al encargado.');
+            }
+
+            // NUEVA VALIDACIÓN: Verificar que el día no esté deshabilitado
+            const fecha = new Date(reservaData.fecha);
+            const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const diaSemana = diasSemana[fecha.getDay()];
+
+            const [diaDeshabilitado] = await connection.query(`
+                SELECT COUNT(*) as count 
+                FROM Area_Dias_Deshabilitados 
+                WHERE id_area = ? AND dia_semana = ?
+            `, [reservaData.id_area, diaSemana]);
+
+            if (diaDeshabilitado[0].count > 0) {
+                throw new Error(`El área no está disponible los días ${diaSemana}. Por favor, selecciona otro día.`);
+            }
+
+            // NUEVA VALIDACIÓN: Verificar que el horario no esté deshabilitado
+            const [horarioDeshabilitado] = await connection.query(`
+                SELECT COUNT(*) as count 
+                FROM Area_Horarios_Deshabilitados 
+                WHERE id_area = ? AND id_horario = ?
+            `, [reservaData.id_area, reservaData.id_horario]);
+
+            if (horarioDeshabilitado[0].count > 0) {
+                throw new Error('El horario seleccionado no está disponible para esta área. Por favor, selecciona otro horario.');
+            }
+
             // Verificar que el horario esté disponible
             const [disponibilidad] = await connection.query(`
                 SELECT COUNT(*) as reservas_existentes

@@ -96,6 +96,17 @@ class ReservationController {
     async getReservasPendientes(req, res) {
         try {
             const reservas = await this.reservationService.getReservasByEstado('pendiente');
+            
+            // Log de depuración para verificar los datos
+            console.log('=== RESERVAS PENDIENTES DEBUG ===');
+            if (reservas.length > 0) {
+                console.log('Primera reserva:', JSON.stringify(reservas[0], null, 2));
+                console.log('Área nombre:', reservas[0].area_nombre);
+                console.log('ID área:', reservas[0].id_area);
+            }
+            console.log('Total reservas:', reservas.length);
+            console.log('================================');
+            
             res.json({
                 success: true,
                 data: reservas
