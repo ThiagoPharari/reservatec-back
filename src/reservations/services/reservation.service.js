@@ -51,14 +51,18 @@ class ReservationService {
         try {
             await connection.beginTransaction();
 
-            // Buscar el usuario por email
+            // Buscar el usuario por email y verificar que esté activo
             const [usuario] = await connection.query(
-                'SELECT id_usuario FROM Usuarios WHERE correo = ? AND activo = true',
+                'SELECT id_usuario, activo FROM Usuarios WHERE correo = ?',
                 [reservaData.user_email]
             );
 
             if (usuario.length === 0) {
-                throw new Error('Usuario no encontrado o inactivo');
+                throw new Error('Usuario no encontrado');
+            }
+
+            if (!usuario[0].activo) {
+                throw new Error('No puedes crear reservas porque tu cuenta está suspendida. Contacta al encargado para más información.');
             }
 
             const userId = usuario[0].id_usuario;

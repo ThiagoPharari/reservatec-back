@@ -97,6 +97,46 @@ class UserService {
         const [carreras] = await db.query('SELECT * FROM Carreras');
         return carreras;
     }
+
+    // Obtener todos los usuarios con información de carrera
+    async getUsuarios() {
+        const [usuarios] = await db.query(`
+            SELECT 
+                u.id_usuario,
+                u.nombre,
+                u.apellido,
+                u.dni,
+                u.codigo,
+                u.correo as email,
+                u.condicion_med as condicion_medica,
+                u.activo,
+                c.nombre as carrera,
+                CASE 
+                    WHEN u.activo = 1 THEN 'activo'
+                    ELSE 'suspendido'
+                END as estado
+            FROM Usuarios u
+            INNER JOIN Carreras c ON u.id_carrera = c.id_carrera
+            ORDER BY u.nombre, u.apellido
+        `);
+        return usuarios;
+    }
+
+    // Cambiar estado de usuario
+    async cambiarEstadoUsuario(userId, estado) {
+        const activoValue = estado === 'activo' ? 1 : 0;
+        
+        const [result] = await db.query(
+            'UPDATE Usuarios SET activo = ? WHERE id_usuario = ?',
+            [activoValue, userId]
+        );
+
+        if (result.affectedRows === 0) {
+            throw new Error('Usuario no encontrado');
+        }
+
+        return true;
+    }
 }
 
 module.exports = UserService;

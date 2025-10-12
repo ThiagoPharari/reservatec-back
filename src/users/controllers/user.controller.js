@@ -114,6 +114,49 @@ class UserController {
             });
         }
     }
+
+    // Obtener todos los usuarios
+    async getUsuarios(req, res) {
+        try {
+            const usuarios = await this.userService.getUsuarios();
+            res.json({
+                success: true,
+                data: usuarios
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Cambiar estado de usuario (activo/suspendido)
+    async cambiarEstadoUsuario(req, res) {
+        try {
+            const { id } = req.params;
+            const { estado } = req.body;
+
+            if (!['activo', 'suspendido'].includes(estado)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Estado inválido. Debe ser "activo" o "suspendido"'
+                });
+            }
+
+            await this.userService.cambiarEstadoUsuario(id, estado);
+            
+            res.json({
+                success: true,
+                message: `Usuario ${estado === 'activo' ? 'activado' : 'suspendido'} correctamente`
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }
 
 module.exports = UserController;
