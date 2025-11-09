@@ -49,6 +49,10 @@ app.use('/api/areas', areaRoutes);
 const dashboardRoutes = require('./dashboard/routes/dashboard.routes');
 app.use('/api/dashboard', dashboardRoutes);
 
+// Importar y usar las rutas de reportes
+const reportRoutes = require('./reports/routes/report.routes');
+app.use('/api/reports', reportRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

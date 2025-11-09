@@ -230,6 +230,113 @@ class ReservationController {
             });
         }
     }
+
+    // ============================================================
+    // NUEVOS ENDPOINTS: Control de Devolución de Materiales
+    // ============================================================
+
+    // Marcar material como devuelto
+    async marcarDevuelto(req, res) {
+        try {
+            const { id } = req.params;
+            const { devuelto } = req.body; // true o false
+            
+            await this.reservationService.marcarMaterialDevuelto(
+                parseInt(id),
+                devuelto
+            );
+            
+            res.json({
+                success: true,
+                message: devuelto 
+                    ? 'Material marcado como devuelto correctamente'
+                    : 'Material marcado como NO devuelto correctamente'
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Marcar material como NO devuelto y suspender usuario
+    async marcarNoDevueltoYSuspender(req, res) {
+        try {
+            const { id } = req.params;
+            const { descripcion } = req.body;
+            
+            const result = await this.reservationService.marcarMaterialNoDevuelto(
+                parseInt(id),
+                descripcion
+            );
+            
+            res.json({
+                success: true,
+                message: result.message,
+                data: result.usuario
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Obtener reservas con material
+    async getReservasConMaterial(req, res) {
+        try {
+            const { filtro } = req.query; // 'todas', 'pendientes', 'devueltas', 'no_devueltas'
+            const reservas = await this.reservationService.getReservasConMaterial(filtro || 'todas');
+            
+            res.json({
+                success: true,
+                data: reservas
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Obtener sanciones de un usuario
+    async getSancionesUsuario(req, res) {
+        try {
+            const { userId } = req.params;
+            const sanciones = await this.reservationService.getSancionesUsuario(parseInt(userId));
+            
+            res.json({
+                success: true,
+                data: sanciones
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Levantar suspensión de usuario
+    async levantarSuspension(req, res) {
+        try {
+            const { userId } = req.params;
+            await this.reservationService.levantarSuspension(parseInt(userId));
+            
+            res.json({
+                success: true,
+                message: 'Suspensión levantada exitosamente. El usuario puede volver a hacer reservas.'
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }
 
 module.exports = ReservationController;

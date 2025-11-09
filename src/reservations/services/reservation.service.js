@@ -253,6 +253,8 @@ class ReservationService {
                 r.fecha,
                 r.participantes,
                 r.material,
+                r.material_devuelto,
+                r.fecha_devolucion,
                 r.estado,
                 c.comentario as comentario_encargado,
                 a.nombre as area_nombre,
@@ -293,6 +295,216 @@ class ReservationService {
                 SET estado = 'cancelado'
                 WHERE id_reserva = ?
             `, [reservaId]);
+
+            await connection.commit();
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // ============================================================
+    // NUEVAS FUNCIONALIDADES: Control de Devolución de Materiales
+    // ============================================================
+
+    // Marcar material como devuelto
+    async marcarMaterialDevuelto(reservaId, devuelto, adminId = 1) {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Verificar que la reserva existe y tiene material
+            const [reserva] = await connection.query(
+                'SELECT * FROM Reservas WHERE id_reserva = ? AND material = TRUE',
+                [reservaId]
+            );
+
+            if (reserva.length === 0) {
+                throw new Error('Reserva no encontrada o no tiene material asignado');
+            }
+
+            // Actualizar estado de devolución
+            await connection.query(`
+                UPDATE Reservas 
+                SET material_devuelto = ?, 
+                    fecha_devolucion = NOW()
+                WHERE id_reserva = ?
+            `, [devuelto, reservaId]);
+
+            await connection.commit();
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // Marcar material como NO devuelto y suspender usuario (HU-6)
+    async marcarMaterialNoDevuelto(reservaId, descripcion, adminId = 1) {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // 1. Verificar que la reserva existe y tiene material
+            const [reserva] = await connection.query(
+                'SELECT r.*, u.nombre, u.apellido, u.correo FROM Reservas r INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario WHERE r.id_reserva = ? AND r.material = TRUE',
+                [reservaId]
+            );
+
+            if (reserva.length === 0) {
+                throw new Error('Reserva no encontrada o no tiene material asignado');
+            }
+
+            const usuario = reserva[0];
+
+            // 2. Marcar material como NO devuelto
+            await connection.query(`
+                UPDATE Reservas 
+                SET material_devuelto = FALSE, 
+                    fecha_devolucion = NOW()
+                WHERE id_reserva = ?
+            `, [reservaId]);
+
+            // 3. Suspender al usuario (activo = 0)
+            await connection.query(
+                'UPDATE Usuarios SET activo = 0 WHERE id_usuario = ?',
+                [usuario.id_usuario]
+            );
+
+            // 4. Verificar si el admin existe en la tabla Administradores
+            const [adminExists] = await connection.query(
+                'SELECT id_admin FROM Administradores WHERE id_admin = ?',
+                [adminId]
+            );
+
+            const validAdminId = adminExists && adminExists.length > 0 ? adminId : null;
+
+            // 5. Crear un reporte automático para registrar la sanción
+            // El usuario podrá ver el motivo de la suspensión consultando sus reportes sancionados
+            await connection.query(`
+                INSERT INTO Reportes 
+                (id_reserva, id_usuario_reporta, id_usuario_reportado, razon, descripcion, estado, fecha_reporte, fecha_revision, id_admin_revisa, comentario_admin)
+                VALUES (?, ?, ?, 'Material no devuelto', ?, 'sancionado', NOW(), NOW(), ?, ?)
+            `, [
+                reservaId, 
+                usuario.id_usuario, // El usuario reportado también es quien "reporta" (auto-reporte del sistema)
+                usuario.id_usuario, 
+                descripcion || 'Material deportivo no devuelto en la fecha establecida',
+                validAdminId,
+                descripcion || 'Usuario suspendido por no devolver material deportivo'
+            ]);
+
+            await connection.commit();
+
+            return {
+                success: true,
+                message: `Usuario ${usuario.nombre} ${usuario.apellido} suspendido por no devolver material`,
+                usuario: {
+                    id: usuario.id_usuario,
+                    nombre: `${usuario.nombre} ${usuario.apellido}`,
+                    correo: usuario.correo
+                }
+            };
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // Obtener reservas con material (para encargado)
+    async getReservasConMaterial(filtro = 'todas') {
+        let whereClause = 'r.material = TRUE';
+        
+        if (filtro === 'pendientes') {
+            whereClause += ' AND r.material_devuelto IS NULL AND r.estado = "aceptado"';
+        } else if (filtro === 'devueltas') {
+            whereClause += ' AND r.material_devuelto = TRUE';
+        } else if (filtro === 'no_devueltas') {
+            whereClause += ' AND r.material_devuelto = FALSE';
+        }
+
+        const [reservas] = await db.query(`
+            SELECT 
+                r.id_reserva,
+                r.id_usuario,
+                r.id_area,
+                r.id_horario,
+                r.fecha,
+                r.participantes,
+                r.material,
+                r.material_devuelto,
+                r.fecha_devolucion,
+                r.estado,
+                c.comentario as comentario_encargado,
+                u.nombre as usuario_nombre,
+                u.apellido as usuario_apellido,
+                u.dni as usuario_dni,
+                u.codigo as usuario_codigo,
+                u.activo as usuario_activo,
+                a.nombre as area_nombre,
+                h.hora_inicio as horario_inicio,
+                h.hora_fin as horario_fin
+            FROM Reservas r
+            INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario
+            INNER JOIN Areas a ON r.id_area = a.id_area
+            INNER JOIN Horarios h ON r.id_horario = h.id_horario
+            LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
+            WHERE ${whereClause}
+            ORDER BY r.fecha DESC, h.hora_inicio ASC
+        `);
+
+        return reservas;
+    }
+
+    // Obtener historial de sanciones de un usuario
+    async getSancionesUsuario(userId) {
+        // Ahora obtenemos las sanciones desde la tabla Reportes
+        const [sanciones] = await db.query(`
+            SELECT 
+                r.id_reporte,
+                r.razon,
+                r.descripcion,
+                r.comentario_admin,
+                r.fecha_revision as fecha_sancion,
+                res.fecha as fecha_reserva,
+                res.id_area,
+                a.nombre as area_nombre,
+                adm.nombre as admin_nombre,
+                adm.apellido as admin_apellido
+            FROM Reportes r
+            LEFT JOIN Reservas res ON r.id_reserva = res.id_reserva
+            LEFT JOIN Areas a ON res.id_area = a.id_area
+            LEFT JOIN Administradores adm ON r.id_admin_revisa = adm.id_admin
+            WHERE r.id_usuario_reportado = ? AND r.estado = 'sancionado'
+            ORDER BY r.fecha_revision DESC
+        `, [userId]);
+
+        return sanciones;
+    }
+
+    // Levantar suspensión de usuario
+    async levantarSuspension(userId, adminId = 1) {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Activar usuario (cambiar activo de 0 a 1)
+            await connection.query(
+                'UPDATE Usuarios SET activo = 1 WHERE id_usuario = ?',
+                [userId]
+            );
+
+            // Ya no necesitamos actualizar tabla Sanciones porque no existe
+            // La información de las sanciones queda registrada en la tabla Reportes
+            // con estado = 'sancionado'
 
             await connection.commit();
 

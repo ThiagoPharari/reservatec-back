@@ -16,6 +16,13 @@ router.get('/activas', reservationController.getReservasActivas.bind(reservation
 router.put('/:id/aceptar', reservationController.aceptarReserva.bind(reservationController));
 router.put('/:id/rechazar', reservationController.rechazarReserva.bind(reservationController));
 
+// NUEVAS RUTAS: Control de devolución de materiales (HU-5 y HU-6)
+router.get('/con-material', reservationController.getReservasConMaterial.bind(reservationController));
+router.put('/:id/marcar-devuelto', reservationController.marcarDevuelto.bind(reservationController));
+router.put('/:id/marcar-no-devuelto-suspender', reservationController.marcarNoDevueltoYSuspender.bind(reservationController));
+router.get('/usuario/:userId/sanciones', reservationController.getSancionesUsuario.bind(reservationController));
+router.put('/usuario/:userId/levantar-suspension', reservationController.levantarSuspension.bind(reservationController));
+
 // Rutas protegidas (requieren autenticación)
 router.use(validateToken); // Aplicar middleware de autenticación a todas las rutas siguientes
 
