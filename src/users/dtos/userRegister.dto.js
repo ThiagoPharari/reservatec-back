@@ -11,16 +11,7 @@ class UserRegisterDTO {
     }
 
     validate() {
-        console.log('Validando datos:', {
-            nombre: this.nombre,
-            apellido: this.apellido,
-            dni: this.dni,
-            codigo: this.codigo,
-            id_carrera: this.id_carrera,
-            correo: this.correo,
-            tipoCorreo: typeof this.correo
-        });
-
+        
         // Validar campos requeridos individualmente para identificar cuál falta
         if (!this.nombre) throw new Error('El nombre es requerido');
         if (!this.apellido) throw new Error('El apellido es requerido');

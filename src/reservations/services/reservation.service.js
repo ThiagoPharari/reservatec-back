@@ -81,11 +81,18 @@ class ReservationService {
                 throw new Error('El área deportiva no está disponible en este momento. Por favor, contacta al encargado.');
             }
 
-            // NUEVA VALIDACIÓN: Verificar que el día no esté deshabilitado
+            // VALIDACIÓN: No permitir reservas en sábados ni domingos
             const fecha = new Date(reservaData.fecha);
             const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
             const diaSemana = diasSemana[fecha.getDay()];
+            const numeroDia = fecha.getDay();
 
+            // Rechazar sábados (6) y domingos (0)
+            if (numeroDia === 0 || numeroDia === 6) {
+                throw new Error('No se permiten reservas los fines de semana (sábados y domingos). Por favor, selecciona un día entre lunes y viernes.');
+            }
+
+            // VALIDACIÓN: Verificar que el día no esté deshabilitado
             const [diaDeshabilitado] = await connection.query(`
                 SELECT COUNT(*) as count 
                 FROM Area_Dias_Deshabilitados 
