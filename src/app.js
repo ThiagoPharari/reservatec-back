@@ -37,7 +37,12 @@ app.use('/auth', authRoutes);
 const userRoutes = require('./users/routes/user.routes');
 app.use('/api/users', userRoutes);
 
-// Importar y usar las rutas de reservas
+// IMPORTANTE: Registrar rutas más específicas ANTES que las genéricas
+// Importar y usar las rutas de fechas prohibidas (debe ir ANTES de /api/reservations)
+const fechaProhibidaRoutes = require('./reservations/routes/fechaProhibida.routes');
+app.use('/api/reservations/fechas-prohibidas', fechaProhibidaRoutes);
+
+// Importar y usar las rutas de reservas (ruta más genérica)
 const reservationRoutes = require('./reservations/routes/reservation.routes');
 app.use('/api/reservations', reservationRoutes);
 
