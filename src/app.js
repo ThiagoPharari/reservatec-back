@@ -7,6 +7,9 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./auth/routes/auth.routes');
 require('./auth/config/passport.config');
 
+// Inicializar configuración de notificaciones push
+const vapidConfig = require('./notifications/config/vapid.config');
+
 const app = express();
 
 // Middleware
@@ -58,7 +61,21 @@ app.use('/api/dashboard', dashboardRoutes);
 const reportRoutes = require('./reports/routes/report.routes');
 app.use('/api/reports', reportRoutes);
 
+// Importar y usar las rutas de notificaciones
+const notificationRoutes = require('./notifications/routes/notification.routes');
+app.use('/api/notifications', notificationRoutes);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+
+// Inicializar VAPID y luego iniciar el servidor
+vapidConfig.initialize()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Server is running on port ${PORT}`);
+      console.log(`✅ Notificaciones Push habilitadas`);
+    });
+  })
+  .catch(error => {
+    console.error('❌ Error al inicializar VAPID:', error);
+    process.exit(1);
+  });

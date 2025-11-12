@@ -189,7 +189,6 @@ class ReservationService {
                 u.nombre as usuario_nombre,
                 u.apellido as usuario_apellido,
                 u.dni as usuario_dni,
-                u.codigo as usuario_codigo,
                 a.nombre as area_nombre,
                 h.hora_inicio as horario_inicio,
                 h.hora_fin as horario_fin
@@ -224,10 +223,11 @@ class ReservationService {
             // Si hay comentario, crear el comentario y asociarlo
             let comentarioId = null;
             if (comentario && comentario.trim() !== '') {
-                // Asumir que el admin_id es 1 por ahora (deberías obtenerlo del token del encargado)
+                // Insertar comentario sin id_admin (será NULL)
+                // En el futuro se puede mejorar para obtener el id del encargado del token
                 const [comentarioResult] = await connection.query(`
                     INSERT INTO Comentarios (id_admin, comentario) 
-                    VALUES (1, ?)
+                    VALUES (NULL, ?)
                 `, [comentario]);
                 comentarioId = comentarioResult.insertId;
             }
@@ -454,7 +454,6 @@ class ReservationService {
                 u.nombre as usuario_nombre,
                 u.apellido as usuario_apellido,
                 u.dni as usuario_dni,
-                u.codigo as usuario_codigo,
                 u.activo as usuario_activo,
                 a.nombre as area_nombre,
                 h.hora_inicio as horario_inicio,

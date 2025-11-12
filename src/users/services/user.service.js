@@ -8,8 +8,8 @@ class UserService {
             
             // Verificar si existe el usuario
             const [existingUser] = await connection.query(
-                'SELECT * FROM usuarios WHERE dni = ? OR codigo = ? OR correo = ?',
-                [userData.dni, userData.codigo, userData.correo]
+                'SELECT * FROM usuarios WHERE dni = ? OR correo = ?',
+                [userData.dni, userData.correo]
             );
 
             if (existingUser.length > 0) {
@@ -18,9 +18,9 @@ class UserService {
 
             // Insertar nuevo usuario
             const [result] = await connection.query(
-                'INSERT INTO usuarios (nombre, apellido, dni, codigo, id_carrera, condicion_med, correo, activo) VALUES (?, ?, ?, ?, ?, ?, ?, true)',
-                [userData.nombre, userData.apellido, userData.dni, userData.codigo, 
-                 userData.id_carrera, userData.condicion_med, userData.correo]
+                'INSERT INTO usuarios (nombre, apellido, dni, id_carrera, condicion_med, correo, activo) VALUES (?, ?, ?, ?, ?, ?, true)',
+                [userData.nombre, userData.apellido, userData.dni, userData.id_carrera, 
+                 userData.condicion_med, userData.correo]
             );
 
             await connection.commit();
@@ -43,7 +43,7 @@ class UserService {
 
     async checkRegistrationStatus(email) {
         const [user] = await db.query(
-            'SELECT id_usuario, nombre, apellido, dni, codigo, id_carrera, condicion_med, correo FROM usuarios WHERE correo = ?',
+            'SELECT id_usuario, nombre, apellido, dni, id_carrera, condicion_med, correo FROM usuarios WHERE correo = ?',
             [email]
         );
         return {
@@ -59,8 +59,8 @@ class UserService {
             
             // Verificar duplicados excluyendo el usuario actual
             const [existing] = await connection.query(
-                'SELECT * FROM usuarios WHERE (dni = ? OR codigo = ? OR correo = ?) AND id_usuario != ?',
-                [userData.dni, userData.codigo, userData.correo, userId]
+                'SELECT * FROM usuarios WHERE (dni = ? OR correo = ?) AND id_usuario != ?',
+                [userData.dni, userData.correo, userId]
             );
 
             if (existing.length > 0) {
@@ -71,15 +71,13 @@ class UserService {
             const [result] = await connection.query(
                 `UPDATE usuarios SET 
                     nombre = ?, 
-                    apellido = ?, 
+                    apellido = ?,
                     dni = ?, 
-                    codigo = ?, 
                     id_carrera = ?, 
                     condicion_med = ?, 
                     correo = ?
                 WHERE id_usuario = ?`,
-                [userData.nombre, userData.apellido, userData.dni, 
-                 userData.codigo, userData.id_carrera, 
+                [userData.nombre, userData.apellido, userData.dni, userData.id_carrera, 
                  userData.condicion_med, userData.correo, userId]
             );
 
@@ -106,7 +104,6 @@ class UserService {
                 u.nombre,
                 u.apellido,
                 u.dni,
-                u.codigo,
                 u.correo as email,
                 u.condicion_med as condicion_medica,
                 u.activo,

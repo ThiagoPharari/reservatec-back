@@ -1,5 +1,7 @@
 const ReservationService = require('../services/reservation.service');
 const ReservaDTO = require('../dtos/reserva.dto');
+const NotificationService = require('../../notifications/services/notification.service');
+const db = require('../../database/connection');
 
 class ReservationController {
     constructor() {
@@ -131,11 +133,33 @@ class ReservationController {
             const { id } = req.params;
             const comentario = req.body?.comentario || null;
             
+            // Obtener datos de la reserva antes de cambiar estado
+            const [reservaData] = await db.query(`
+                SELECT r.*, u.id_usuario, u.nombre, a.nombre as nombreArea,
+                       h.hora_inicio, DATE_FORMAT(r.fecha, '%d/%m/%Y') as fecha_formato
+                FROM reservas r
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                INNER JOIN areas a ON r.id_area = a.id_area
+                INNER JOIN horarios h ON r.id_horario = h.id_horario
+                WHERE r.id_reserva = ?
+            `, [id]);
+
             await this.reservationService.cambiarEstadoReserva(
                 parseInt(id), 
                 'aceptado', 
                 comentario
             );
+
+            // Enviar notificación al usuario
+            if (reservaData.length > 0) {
+                const reserva = reservaData[0];
+                NotificationService.notifyReservaAprobada(reserva.id_usuario, {
+                    id_reserva: id,
+                    nombreArea: reserva.nombreArea,
+                    fecha: reserva.fecha_formato,
+                    hora: reserva.hora_inicio
+                }).catch(err => console.error('Error al enviar notificación:', err));
+            }
             
             res.json({
                 success: true,
@@ -162,11 +186,26 @@ class ReservationController {
                 });
             }
 
+            // Obtener datos de la reserva antes de cambiar estado
+            const [reservaData] = await db.query(`
+                SELECT r.*, u.id_usuario FROM reservas r
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                WHERE r.id_reserva = ?
+            `, [id]);
+
             await this.reservationService.cambiarEstadoReserva(
                 parseInt(id), 
                 'rechazado', 
                 comentario
             );
+
+            // Enviar notificación al usuario
+            if (reservaData.length > 0) {
+                const reserva = reservaData[0];
+                NotificationService.notifyReservaRechazada(reserva.id_usuario, {
+                    id_reserva: id
+                }, comentario).catch(err => console.error('Error al enviar notificación:', err));
+            }
             
             res.json({
                 success: true,

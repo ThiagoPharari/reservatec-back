@@ -1,12 +1,18 @@
 const jwt = require('jsonwebtoken');
 
-const generateToken = (email) => {
-  return jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+const generateToken = (email, role, userId) => {
+  return jwt.sign(
+    { email, role, userId }, 
+    process.env.JWT_SECRET, 
+    { expiresIn: '1h' }
+  );
 };
 
 const handleGoogleCallback = (req, res) => {
-  // Generar token con el email del usuario
-  const token = generateToken(req.user.email);
+  const { email, picture, role, userId, nombre, apellido } = req.user;
+  
+  // Generar token con el email, rol y userId
+  const token = generateToken(email, role, userId);
   
   // Establecer el token como una cookie http-only
   res.cookie('jwt', token, {
@@ -17,8 +23,8 @@ const handleGoogleCallback = (req, res) => {
   });
 
   // Establecer la URL de la imagen en una cookie accesible por JavaScript
-  if (req.user.picture) {
-    res.cookie('userPicture', req.user.picture, {
+  if (picture) {
+    res.cookie('userPicture', picture, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -26,9 +32,14 @@ const handleGoogleCallback = (req, res) => {
     });
   }
 
-  // Establecer el correo en una cookie accesible por JavaScript
-  if (req.user.email) {
-    const userData = JSON.stringify({ email: req.user.email });
+  // Establecer el correo y rol en una cookie accesible por JavaScript
+  if (email) {
+    const userData = JSON.stringify({ 
+      email, 
+      role,
+      nombre,
+      apellido
+    });
     res.cookie('userData', userData, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
@@ -37,8 +48,12 @@ const handleGoogleCallback = (req, res) => {
     });
   }
   
-  // Redirigir al frontend
-  res.redirect(`${process.env.FRONTEND_URL}/user-info`);
+  // Redirigir según el rol del usuario
+  if (role === 'encargado') {
+    res.redirect(`${process.env.FRONTEND_URL}/encargado`);
+  } else {
+    res.redirect(`${process.env.FRONTEND_URL}/user-info`);
+  }
 };
 
 const handleAuthFailure = (req, res) => {

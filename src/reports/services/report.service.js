@@ -66,12 +66,10 @@ class ReportService {
                     -- Datos del usuario que reporta
                     ur.nombre as reporta_nombre,
                     ur.apellido as reporta_apellido,
-                    ur.codigo as reporta_codigo,
                     
                     -- Datos del usuario reportado
                     ure.nombre as reportado_nombre,
                     ure.apellido as reportado_apellido,
-                    ure.codigo as reportado_codigo,
                     ure.dni as reportado_dni,
                     ure.activo as reportado_activo,
                     
