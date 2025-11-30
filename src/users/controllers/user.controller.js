@@ -1,5 +1,6 @@
 const UserService = require('../services/user.service');
 const UserRegisterDTO = require('../dtos/userRegister.dto');
+const suspensionService = require('../services/suspension.service');
 
 class UserController {
     constructor() {
@@ -149,6 +150,79 @@ class UserController {
             res.json({
                 success: true,
                 message: `Usuario ${estado === 'activo' ? 'activado' : 'suspendido'} correctamente`
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Suspender usuario con duración personalizada
+    async suspenderUsuario(req, res) {
+        try {
+            const { id } = req.params;
+            const { motivo, duracion } = req.body;
+
+            if (!motivo || !duracion) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El motivo y la duración son requeridos'
+                });
+            }
+
+            const duracionesValidas = ['1_dia', '2_dias', '3_dias', '1_semana', '2_semanas', '1_mes', 'indefinido'];
+            if (!duracionesValidas.includes(duracion)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Duración no válida. Valores permitidos: 1_dia, 2_dias, 3_dias, 1_semana, 2_semanas, 1_mes, indefinido'
+                });
+            }
+
+            // Obtener el ID del admin desde el token (req.user viene del middleware)
+            const adminId = req.user?.id_admin || req.user?.userId;
+            
+            const resultado = await suspensionService.suspenderUsuario(
+                parseInt(id),
+                motivo,
+                duracion,
+                adminId
+            );
+
+            res.json(resultado);
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Levantar suspensión de usuario
+    async levantarSuspension(req, res) {
+        try {
+            const { id } = req.params;
+            
+            const resultado = await suspensionService.levantarSuspension(parseInt(id));
+
+            res.json(resultado);
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    // Obtener usuarios suspendidos
+    async getUsuariosSuspendidos(req, res) {
+        try {
+            const usuarios = await suspensionService.obtenerUsuariosSuspendidos();
+            
+            res.json({
+                success: true,
+                data: usuarios
             });
         } catch (error) {
             res.status(500).json({

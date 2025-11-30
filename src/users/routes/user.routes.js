@@ -9,6 +9,11 @@ const userController = new UserController();
 router.get('/usuarios', userController.getUsuarios.bind(userController));
 router.put('/usuarios/:id/estado', userController.cambiarEstadoUsuario.bind(userController));
 
+// Rutas de suspensión de usuarios (para encargados)
+router.post('/usuarios/:id/suspender', userController.suspenderUsuario.bind(userController));
+router.post('/usuarios/:id/levantar-suspension', userController.levantarSuspension.bind(userController));
+router.get('/usuarios/suspendidos/lista', userController.getUsuariosSuspendidos.bind(userController));
+
 // Rutas protegidas con token
 router.use(validateToken); // Aplicar middleware de autenticación a todas las rutas siguientes
 

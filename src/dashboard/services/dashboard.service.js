@@ -7,83 +7,138 @@ class DashboardService {
     async getStats() {
         const connection = await db.getConnection();
         try {
-            // Total de reservas
-            const [totalReservas] = await connection.query(`
+            // ========================================
+            // DATOS PARA EL PANEL DEL ENCARGADO
+            // ========================================
+
+            // 1. Reservas activas (estado 'aceptado' para hoy o futuras)
+            const [reservasActivas] = await connection.query(`
                 SELECT COUNT(*) as total
-                FROM Reservas
+                FROM reservas
+                WHERE estado = 'aceptado'
+                AND fecha >= CURDATE()
             `);
 
-            // Reservas del mes actual
-            const [reservasMesActual] = await connection.query(`
+            // 2. Reservas pendientes (estado 'pendiente')
+            const [reservasPendientes] = await connection.query(`
                 SELECT COUNT(*) as total
-                FROM Reservas
-                WHERE MONTH(fecha) = MONTH(CURRENT_DATE())
-                AND YEAR(fecha) = YEAR(CURRENT_DATE())
+                FROM reservas
+                WHERE estado = 'pendiente'
             `);
 
-            // Reservas del mes anterior
-            const [reservasMesAnterior] = await connection.query(`
+            // 3. Total de usuarios (sin permisos de encargado = sin estar en tabla administradores)
+            const [totalUsuarios] = await connection.query(`
                 SELECT COUNT(*) as total
-                FROM Reservas
-                WHERE MONTH(fecha) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-                AND YEAR(fecha) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+                FROM usuarios
             `);
 
-            // Calcular variación de reservas
-            const totalMesActual = reservasMesActual[0].total;
-            const totalMesAnterior = reservasMesAnterior[0].total;
-            const variacionReservas = totalMesAnterior > 0 
-                ? Math.round(((totalMesActual - totalMesAnterior) / totalMesAnterior) * 100)
-                : 0;
-
-            // Total de usuarios activos
-            const [usuariosActivos] = await connection.query(`
-                SELECT COUNT(*) as total
-                FROM Usuarios
-                WHERE activo = TRUE
+            // 4. Áreas disponibles (habilitadas y sin reservas activas en horarios de hoy)
+            const [areasDisponibles] = await connection.query(`
+                SELECT COUNT(DISTINCT a.id_area) as total
+                FROM areas a
+                WHERE a.habilitada = TRUE
+                AND (
+                    a.fecha_fin_deshabilitacion IS NULL 
+                    OR a.fecha_fin_deshabilitacion < NOW()
+                )
             `);
 
-            // Usuarios activos del mes anterior (simulado - puedes agregar fecha_registro si quieres)
-            const variacionUsuarios = 8; // Simulado por ahora
-
-            // Área más popular
-            const [areaMasPopular] = await connection.query(`
+            // 5. Reservas recientes del día (últimas 10)
+            const [reservasRecientes] = await connection.query(`
                 SELECT 
-                    a.nombre,
-                    COUNT(r.id_reserva) as total_reservas,
-                    ROUND((COUNT(r.id_reserva) * 100.0 / (SELECT COUNT(*) FROM Reservas)), 0) as porcentaje
-                FROM Areas a
-                LEFT JOIN Reservas r ON a.id_area = r.id_area
-                GROUP BY a.id_area, a.nombre
-                ORDER BY total_reservas DESC
-                LIMIT 1
+                    r.id_reserva,
+                    r.fecha,
+                    r.estado,
+                    a.nombre as area_nombre,
+                    u.nombre as usuario_nombre,
+                    u.apellido as usuario_apellido,
+                    h.hora_inicio,
+                    h.hora_fin,
+                    r.participantes,
+                    DATE_FORMAT(r.fecha, '%d/%m/%Y') as fecha_formato,
+                    CASE 
+                        WHEN r.estado = 'aceptado' THEN 'Activa'
+                        WHEN r.estado = 'pendiente' THEN 'Pendiente'
+                        WHEN r.estado = 'rechazado' THEN 'Rechazada'
+                        WHEN r.estado = 'cancelado' THEN 'Cancelada'
+                        ELSE r.estado
+                    END as estado_texto
+                FROM reservas r
+                INNER JOIN areas a ON r.id_area = a.id_area
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                INNER JOIN horarios h ON r.id_horario = h.id_horario
+                WHERE r.fecha = CURDATE()
+                ORDER BY h.hora_inicio DESC
+                LIMIT 10
             `);
 
-            // Reportes (simulado - puedes crear una tabla de reportes después)
-            const reportes = 23;
-            const variacionReportes = -15;
-
-            // Reservas por día de la semana
-            const [reservasSemanales] = await connection.query(`
-                SELECT 
-                    CASE DAYOFWEEK(fecha)
-                        WHEN 1 THEN 'Dom'
-                        WHEN 2 THEN 'Lun'
-                        WHEN 3 THEN 'Mar'
-                        WHEN 4 THEN 'Mié'
-                        WHEN 5 THEN 'Jue'
-                        WHEN 6 THEN 'Vie'
-                        WHEN 7 THEN 'Sáb'
-                    END as dia,
-                    DAYOFWEEK(fecha) as dia_num,
-                    COUNT(*) as cantidad
-                FROM Reservas
-                WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-                GROUP BY DAYOFWEEK(fecha), dia
-                ORDER BY dia_num
+            // 6. Actividad del sistema (últimas acciones)
+            const [actividadSistema] = await connection.query(`
+                (SELECT 
+                    'Nueva reserva creada' as accion,
+                    CONCAT(u.nombre, ' ', u.apellido) as usuario,
+                    r.fecha as fecha_accion,
+                    TIMESTAMPDIFF(MINUTE, r.fecha, NOW()) as minutos_transcurridos
+                FROM reservas r
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                WHERE r.fecha >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                ORDER BY r.fecha DESC
+                LIMIT 3)
+                UNION ALL
+                (SELECT 
+                    CASE 
+                        WHEN r.estado = 'rechazado' THEN 'Reserva cancelada'
+                        WHEN r.estado = 'aceptado' THEN 'Reserva aprobada'
+                        ELSE 'Reserva modificada'
+                    END as accion,
+                    CONCAT(u.nombre, ' ', u.apellido) as usuario,
+                    r.fecha as fecha_accion,
+                    TIMESTAMPDIFF(MINUTE, r.fecha, NOW()) as minutos_transcurridos
+                FROM reservas r
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                WHERE r.estado IN ('aceptado', 'rechazado')
+                AND r.fecha >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                ORDER BY r.fecha DESC
+                LIMIT 2)
+                UNION ALL
+                (SELECT 
+                    'Usuario registrado' as accion,
+                    CONCAT(nombre, ' ', apellido) as usuario,
+                    NOW() as fecha_accion,
+                    TIMESTAMPDIFF(MINUTE, NOW(), NOW()) as minutos_transcurridos
+                FROM usuarios
+                ORDER BY id_usuario DESC
+                LIMIT 2)
+                ORDER BY fecha_accion DESC
+                LIMIT 5
             `);
 
-            // Reservas por mes (últimos 6 meses)
+            // Formatear actividad del sistema con textos legibles
+            const actividadFormateada = actividadSistema.map(item => {
+                let tiempoTexto;
+                if (item.minutos_transcurridos < 1) {
+                    tiempoTexto = 'Hace menos de 1 min';
+                } else if (item.minutos_transcurridos < 60) {
+                    tiempoTexto = `Hace ${item.minutos_transcurridos} min`;
+                } else if (item.minutos_transcurridos < 120) {
+                    tiempoTexto = 'Hace 1 hora';
+                } else {
+                    const horas = Math.floor(item.minutos_transcurridos / 60);
+                    tiempoTexto = `Hace ${horas} horas`;
+                }
+
+                return {
+                    accion: item.accion,
+                    usuario: item.usuario,
+                    tiempo: tiempoTexto
+                };
+            });
+
+            // ========================================
+            // ESTADÍSTICAS ADICIONALES
+            // ========================================
+
+            // Reservas por mes (últimos 6 meses) - para gráficos históricos
             const [reservasMensuales] = await connection.query(`
                 SELECT 
                     CASE MONTH(fecha)
@@ -102,24 +157,24 @@ class DashboardService {
                     END as mes,
                     COUNT(*) as cantidad,
                     MONTH(fecha) as mes_num
-                FROM Reservas
+                FROM reservas
                 WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
                 GROUP BY YEAR(fecha), MONTH(fecha), mes
                 ORDER BY YEAR(fecha), mes_num
             `);
 
             return {
-                totalReservas: totalReservas[0].total,
-                variacionReservas: variacionReservas,
-                usuariosActivos: usuariosActivos[0].total,
-                variacionUsuarios: variacionUsuarios,
-                areaMasPopular: {
-                    nombre: areaMasPopular[0]?.nombre || 'N/A',
-                    porcentaje: areaMasPopular[0]?.porcentaje || 0
-                },
-                reportes: reportes,
-                variacionReportes: variacionReportes,
-                reservasSemanales: reservasSemanales,
+                // Datos en tiempo real - panel principal
+                reservasActivas: reservasActivas[0].total,
+                reservasPendientes: reservasPendientes[0].total,
+                totalUsuarios: totalUsuarios[0].total,
+                areasDisponibles: areasDisponibles[0].total,
+                
+                // Actividad reciente
+                reservasRecientes: reservasRecientes,
+                actividadSistema: actividadFormateada,
+                
+                // Datos históricos - para gráficos
                 reservasMensuales: reservasMensuales
             };
 

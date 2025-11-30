@@ -1,4 +1,5 @@
 const areaService = require('../services/area.service');
+const areaDisableService = require('../services/area-disable.service');
 
 class AreaController {
     // Obtener todas las áreas con configuración
@@ -66,6 +67,93 @@ class AreaController {
             res.status(500).json({
                 success: false,
                 message: 'Error al verificar disponibilidad'
+            });
+        }
+    }
+
+    // Deshabilitar un área con duración específica
+    async deshabilitarArea(req, res) {
+        try {
+            const { id } = req.params;
+            const { motivo, duracion } = req.body;
+            const adminId = req.user.id_usuario;
+
+            // Validar que se proporcionó motivo y duración
+            if (!motivo || !duracion) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Se requiere motivo y duración para deshabilitar el área'
+                });
+            }
+
+            // Validar que la duración es válida
+            const duracionesValidas = ['1_dia', '2_dias', '3_dias', '1_semana', '2_semanas', '1_mes', 'indefinido'];
+            if (!duracionesValidas.includes(duracion)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Duración no válida. Opciones: 1_dia, 2_dias, 3_dias, 1_semana, 2_semanas, 1_mes, indefinido'
+                });
+            }
+
+            const resultado = await areaDisableService.deshabilitarArea(
+                parseInt(id),
+                motivo,
+                duracion,
+                adminId
+            );
+
+            res.json({
+                success: true,
+                message: resultado.message,
+                data: resultado
+            });
+
+        } catch (error) {
+            console.error('Error deshabilitando área:', error);
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Error al deshabilitar área'
+            });
+        }
+    }
+
+    // Habilitar nuevamente un área
+    async habilitarArea(req, res) {
+        try {
+            const { id } = req.params;
+
+            const resultado = await areaDisableService.habilitarArea(parseInt(id));
+
+            res.json({
+                success: true,
+                message: resultado.message,
+                data: resultado
+            });
+
+        } catch (error) {
+            console.error('Error habilitando área:', error);
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Error al habilitar área'
+            });
+        }
+    }
+
+    // Obtener áreas deshabilitadas
+    async getAreasDeshabilitadas(req, res) {
+        try {
+            const areas = await areaDisableService.obtenerAreasDeshabilitadas();
+
+            res.json({
+                success: true,
+                data: areas
+            });
+
+        } catch (error) {
+            console.error('Error obteniendo áreas deshabilitadas:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error al obtener áreas deshabilitadas'
             });
         }
     }

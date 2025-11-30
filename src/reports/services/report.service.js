@@ -11,7 +11,7 @@ class ReportService {
 
             // Obtener el usuario dueño de la reserva reportada
             const [reserva] = await connection.query(
-                'SELECT id_usuario FROM Reservas WHERE id_reserva = ?',
+                'SELECT id_usuario FROM reservas WHERE id_reserva = ?',
                 [id_reserva]
             );
 
@@ -91,9 +91,9 @@ class ReportService {
                     ad.apellido as admin_apellido
                     
                 FROM Reportes r
-                INNER JOIN Usuarios ur ON r.id_usuario_reporta = ur.id_usuario
-                INNER JOIN Usuarios ure ON r.id_usuario_reportado = ure.id_usuario
-                INNER JOIN Reservas res ON r.id_reserva = res.id_reserva
+                INNER JOIN usuarios ur ON r.id_usuario_reporta = ur.id_usuario
+                INNER JOIN usuarios ure ON r.id_usuario_reportado = ure.id_usuario
+                INNER JOIN reservas res ON r.id_reserva = res.id_reserva
                 INNER JOIN Areas a ON res.id_area = a.id_area
                 INNER JOIN Horarios h ON res.id_horario = h.id_horario
                 LEFT JOIN Administradores ad ON r.id_admin_revisa = ad.id_admin
@@ -140,8 +140,8 @@ class ReportService {
                     h.hora_fin
                     
                 FROM Reportes r
-                INNER JOIN Usuarios ur ON r.id_usuario_reporta = ur.id_usuario
-                INNER JOIN Reservas res ON r.id_reserva = res.id_reserva
+                INNER JOIN usuarios ur ON r.id_usuario_reporta = ur.id_usuario
+                INNER JOIN reservas res ON r.id_reserva = res.id_reserva
                 INNER JOIN Areas a ON res.id_area = a.id_area
                 INNER JOIN Horarios h ON res.id_horario = h.id_horario
                 WHERE r.id_usuario_reportado = ?
@@ -272,7 +272,7 @@ class ReportService {
                     ad.apellido as admin_apellido
                     
                 FROM Reportes r
-                INNER JOIN Reservas res ON r.id_reserva = res.id_reserva
+                INNER JOIN reservas res ON r.id_reserva = res.id_reserva
                 INNER JOIN Areas a ON res.id_area = a.id_area
                 INNER JOIN Horarios h ON res.id_horario = h.id_horario
                 LEFT JOIN Administradores ad ON r.id_admin_revisa = ad.id_admin
@@ -291,3 +291,4 @@ class ReportService {
 }
 
 module.exports = new ReportService();
+

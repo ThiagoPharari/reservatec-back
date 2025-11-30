@@ -1,6 +1,6 @@
 const ReservationService = require('../services/reservation.service');
 const ReservaDTO = require('../dtos/reserva.dto');
-const NotificationService = require('../../notifications/services/notification.service');
+const emailService = require('../../shared/services/email.service');
 const db = require('../../database/connection');
 
 class ReservationController {
@@ -135,8 +135,17 @@ class ReservationController {
             
             // Obtener datos de la reserva antes de cambiar estado
             const [reservaData] = await db.query(`
-                SELECT r.*, u.id_usuario, u.nombre, a.nombre as nombreArea,
-                       h.hora_inicio, DATE_FORMAT(r.fecha, '%d/%m/%Y') as fecha_formato
+                SELECT 
+                    r.id_reserva,
+                    r.id_usuario,
+                    r.fecha,
+                    r.participantes,
+                    u.nombre as usuario_nombre,
+                    u.apellido as usuario_apellido,
+                    u.correo as usuario_correo,
+                    a.nombre as area_nombre,
+                    h.hora_inicio as horario_inicio,
+                    h.hora_fin as horario_fin
                 FROM reservas r
                 INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
                 INNER JOIN areas a ON r.id_area = a.id_area
@@ -150,15 +159,11 @@ class ReservationController {
                 comentario
             );
 
-            // Enviar notificación al usuario
+            // Enviar correo al usuario
             if (reservaData.length > 0) {
                 const reserva = reservaData[0];
-                NotificationService.notifyReservaAprobada(reserva.id_usuario, {
-                    id_reserva: id,
-                    nombreArea: reserva.nombreArea,
-                    fecha: reserva.fecha_formato,
-                    hora: reserva.hora_inicio
-                }).catch(err => console.error('Error al enviar notificación:', err));
+                emailService.enviarCorreoReservaAprobada(reserva)
+                    .catch(err => console.error('Error al enviar correo:', err));
             }
             
             res.json({
@@ -185,11 +190,23 @@ class ReservationController {
                     message: 'El comentario es requerido para rechazar una reserva'
                 });
             }
-
+            
             // Obtener datos de la reserva antes de cambiar estado
             const [reservaData] = await db.query(`
-                SELECT r.*, u.id_usuario FROM reservas r
+                SELECT 
+                    r.id_reserva,
+                    r.id_usuario,
+                    r.fecha,
+                    u.nombre as usuario_nombre,
+                    u.apellido as usuario_apellido,
+                    u.correo as usuario_correo,
+                    a.nombre as area_nombre,
+                    h.hora_inicio as horario_inicio,
+                    h.hora_fin as horario_fin
+                FROM reservas r
                 INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                INNER JOIN areas a ON r.id_area = a.id_area
+                INNER JOIN horarios h ON r.id_horario = h.id_horario
                 WHERE r.id_reserva = ?
             `, [id]);
 
@@ -199,12 +216,12 @@ class ReservationController {
                 comentario
             );
 
-            // Enviar notificación al usuario
+            // Enviar correo al usuario
             if (reservaData.length > 0) {
                 const reserva = reservaData[0];
-                NotificationService.notifyReservaRechazada(reserva.id_usuario, {
-                    id_reserva: id
-                }, comentario).catch(err => console.error('Error al enviar notificación:', err));
+                reserva.comentario = comentario;
+                emailService.enviarCorreoReservaRechazada(reserva)
+                    .catch(err => console.error('Error al enviar correo:', err));
             }
             
             res.json({

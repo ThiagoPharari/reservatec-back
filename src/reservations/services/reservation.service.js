@@ -5,7 +5,7 @@ class ReservationService {
     async getAreas() {
         const [areas] = await db.query(`
             SELECT id_area, nombre 
-            FROM Areas 
+            FROM areas 
             ORDER BY nombre
         `);
         return areas;
@@ -15,7 +15,7 @@ class ReservationService {
     async getHorarios() {
         const [horarios] = await db.query(`
             SELECT id_horario, hora_inicio, hora_fin 
-            FROM Horarios 
+            FROM horarios 
             ORDER BY hora_inicio
         `);
         return horarios;
@@ -32,8 +32,8 @@ class ReservationService {
                     WHEN r.id_reserva IS NULL THEN true 
                     ELSE false 
                 END as disponible
-            FROM Horarios h
-            LEFT JOIN Reservas r ON (
+            FROM horarios h
+            LEFT JOIN reservas r ON (
                 r.id_horario = h.id_horario 
                 AND r.id_area = ? 
                 AND r.fecha = ? 
@@ -53,7 +53,7 @@ class ReservationService {
 
             // Buscar el usuario por email y verificar que esté activo
             const [usuario] = await connection.query(
-                'SELECT id_usuario, activo FROM Usuarios WHERE correo = ?',
+                'SELECT id_usuario, activo FROM usuarios WHERE correo = ?',
                 [reservaData.user_email]
             );
 
@@ -69,7 +69,7 @@ class ReservationService {
 
             // NUEVA VALIDACIÓN: Verificar que el área esté habilitada
             const [area] = await connection.query(
-                'SELECT habilitada FROM Areas WHERE id_area = ?',
+                'SELECT habilitada FROM areas WHERE id_area = ?',
                 [reservaData.id_area]
             );
 
@@ -117,7 +117,7 @@ class ReservationService {
             // Verificar que el horario esté disponible
             const [disponibilidad] = await connection.query(`
                 SELECT COUNT(*) as reservas_existentes
-                FROM Reservas 
+                FROM reservas 
                 WHERE id_area = ? 
                 AND id_horario = ? 
                 AND fecha = ? 
@@ -131,7 +131,7 @@ class ReservationService {
             // Verificar que el usuario no tenga otra reserva en el mismo horario y fecha
             const [reservaUsuario] = await connection.query(`
                 SELECT COUNT(*) as reservas_usuario
-                FROM Reservas 
+                FROM reservas 
                 WHERE id_usuario = ? 
                 AND fecha = ? 
                 AND id_horario = ?
@@ -144,7 +144,7 @@ class ReservationService {
 
             // Crear la reserva
             const [result] = await connection.query(`
-                INSERT INTO Reservas (
+                INSERT INTO reservas (
                     id_usuario, 
                     id_area, 
                     id_horario, 
@@ -192,10 +192,10 @@ class ReservationService {
                 a.nombre as area_nombre,
                 h.hora_inicio as horario_inicio,
                 h.hora_fin as horario_fin
-            FROM Reservas r
-            INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario
-            INNER JOIN Areas a ON r.id_area = a.id_area
-            INNER JOIN Horarios h ON r.id_horario = h.id_horario
+            FROM reservas r
+            INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+            INNER JOIN areas a ON r.id_area = a.id_area
+            INNER JOIN horarios h ON r.id_horario = h.id_horario
             LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
             WHERE r.estado = ?
             ORDER BY r.fecha DESC, h.hora_inicio ASC
@@ -212,7 +212,7 @@ class ReservationService {
 
             // Verificar que la reserva existe
             const [reserva] = await connection.query(
-                'SELECT * FROM Reservas WHERE id_reserva = ?',
+                'SELECT * FROM reservas WHERE id_reserva = ?',
                 [reservaId]
             );
 
@@ -223,18 +223,18 @@ class ReservationService {
             // Si hay comentario, crear el comentario y asociarlo
             let comentarioId = null;
             if (comentario && comentario.trim() !== '') {
-                // Insertar comentario sin id_admin (será NULL)
+                // Insertar comentario con id_admin por defecto (1 = encargado general)
                 // En el futuro se puede mejorar para obtener el id del encargado del token
                 const [comentarioResult] = await connection.query(`
-                    INSERT INTO Comentarios (id_admin, comentario) 
-                    VALUES (NULL, ?)
+                    INSERT INTO comentarios (id_admin, comentario) 
+                    VALUES (1, ?)
                 `, [comentario]);
                 comentarioId = comentarioResult.insertId;
             }
 
             // Actualizar el estado y el comentario si existe
             await connection.query(`
-                UPDATE Reservas 
+                UPDATE reservas 
                 SET estado = ?${comentarioId ? ', id_comentario = ?' : ''}
                 WHERE id_reserva = ?
             `, comentarioId ? [nuevoEstado, comentarioId, reservaId] : [nuevoEstado, reservaId]);
@@ -267,10 +267,10 @@ class ReservationService {
                 a.nombre as area_nombre,
                 h.hora_inicio as horario_inicio,
                 h.hora_fin as horario_fin
-            FROM Reservas r
-            INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario
-            INNER JOIN Areas a ON r.id_area = a.id_area
-            INNER JOIN Horarios h ON r.id_horario = h.id_horario
+            FROM reservas r
+            INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+            INNER JOIN areas a ON r.id_area = a.id_area
+            INNER JOIN horarios h ON r.id_horario = h.id_horario
             LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
             WHERE u.correo = ?
             ORDER BY r.fecha DESC, h.hora_inicio ASC
@@ -287,8 +287,8 @@ class ReservationService {
 
             // Verificar que la reserva pertenece al usuario y está en estado pendiente
             const [reserva] = await connection.query(`
-                SELECT r.* FROM Reservas r
-                INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario
+                SELECT r.* FROM reservas r
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
                 WHERE r.id_reserva = ? AND u.correo = ? AND r.estado = 'pendiente'
             `, [reservaId, userEmail]);
 
@@ -298,7 +298,7 @@ class ReservationService {
 
             // Actualizar el estado a cancelado
             await connection.query(`
-                UPDATE Reservas 
+                UPDATE reservas 
                 SET estado = 'cancelado'
                 WHERE id_reserva = ?
             `, [reservaId]);
@@ -325,7 +325,7 @@ class ReservationService {
 
             // Verificar que la reserva existe y tiene material
             const [reserva] = await connection.query(
-                'SELECT * FROM Reservas WHERE id_reserva = ? AND material = TRUE',
+                'SELECT * FROM reservas WHERE id_reserva = ? AND material = TRUE',
                 [reservaId]
             );
 
@@ -335,7 +335,7 @@ class ReservationService {
 
             // Actualizar estado de devolución
             await connection.query(`
-                UPDATE Reservas 
+                UPDATE reservas 
                 SET material_devuelto = ?, 
                     fecha_devolucion = NOW()
                 WHERE id_reserva = ?
@@ -359,7 +359,7 @@ class ReservationService {
 
             // 1. Verificar que la reserva existe y tiene material
             const [reserva] = await connection.query(
-                'SELECT r.*, u.nombre, u.apellido, u.correo FROM Reservas r INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario WHERE r.id_reserva = ? AND r.material = TRUE',
+                'SELECT r.*, u.nombre, u.apellido, u.correo FROM reservas r INNER JOIN usuarios u ON r.id_usuario = u.id_usuario WHERE r.id_reserva = ? AND r.material = TRUE',
                 [reservaId]
             );
 
@@ -371,7 +371,7 @@ class ReservationService {
 
             // 2. Marcar material como NO devuelto
             await connection.query(`
-                UPDATE Reservas 
+                UPDATE reservas 
                 SET material_devuelto = FALSE, 
                     fecha_devolucion = NOW()
                 WHERE id_reserva = ?
@@ -458,10 +458,10 @@ class ReservationService {
                 a.nombre as area_nombre,
                 h.hora_inicio as horario_inicio,
                 h.hora_fin as horario_fin
-            FROM Reservas r
-            INNER JOIN Usuarios u ON r.id_usuario = u.id_usuario
-            INNER JOIN Areas a ON r.id_area = a.id_area
-            INNER JOIN Horarios h ON r.id_horario = h.id_horario
+            FROM reservas r
+            INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+            INNER JOIN areas a ON r.id_area = a.id_area
+            INNER JOIN horarios h ON r.id_horario = h.id_horario
             LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
             WHERE ${whereClause}
             ORDER BY r.fecha DESC, h.hora_inicio ASC
@@ -486,8 +486,8 @@ class ReservationService {
                 adm.nombre as admin_nombre,
                 adm.apellido as admin_apellido
             FROM Reportes r
-            LEFT JOIN Reservas res ON r.id_reserva = res.id_reserva
-            LEFT JOIN Areas a ON res.id_area = a.id_area
+            LEFT JOIN reservas res ON r.id_reserva = res.id_reserva
+            LEFT JOIN areas a ON res.id_area = a.id_area
             LEFT JOIN Administradores adm ON r.id_admin_revisa = adm.id_admin
             WHERE r.id_usuario_reportado = ? AND r.estado = 'sancionado'
             ORDER BY r.fecha_revision DESC
