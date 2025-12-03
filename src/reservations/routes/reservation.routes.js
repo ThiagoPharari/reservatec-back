@@ -10,6 +10,9 @@ router.get('/areas', reservationController.getAreas.bind(reservationController))
 router.get('/horarios', reservationController.getHorarios.bind(reservationController));
 router.get('/horarios-disponibles', reservationController.getHorariosDisponibles.bind(reservationController));
 
+// Ruta para obtener reservas por área y fecha
+router.get('/area/:areaId/fecha/:fecha', reservationController.getReservationsByAreaAndDate.bind(reservationController));
+
 // Rutas para encargados (temporalmente sin autenticación para pruebas)
 router.get('/pendientes', reservationController.getReservasPendientes.bind(reservationController));
 router.get('/activas', reservationController.getReservasActivas.bind(reservationController));
