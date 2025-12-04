@@ -58,6 +58,10 @@ app.use('/api/dashboard', dashboardRoutes);
 const reportRoutes = require('./reports/routes/report.routes');
 app.use('/api/reports', reportRoutes);
 
+// Importar y usar las rutas de notificaciones
+const notificationRoutes = require('./notifications/routes/notification.routes');
+app.use('/api/notifications', notificationRoutes);
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
