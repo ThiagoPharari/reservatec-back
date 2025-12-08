@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 
-// Configuración del pool de conexiones
+// Configuración del pool de conexiones con optimizaciones
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -9,7 +9,16 @@ const pool = mysql.createPool({
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 100,
-    queueLimit: 0
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+    // Optimizaciones de rendimiento
+    connectTimeout: 10000, // 10 segundos
+    acquireTimeout: 10000, // 10 segundos
+    timezone: '+00:00',
+    charset: 'utf8mb4',
+    // Habilitar cache de queries preparadas
+    namedPlaceholders: true
 });
 
 // Función para probar la conexión al iniciar el servidor

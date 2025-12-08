@@ -4,22 +4,43 @@ class ReportController {
     // Crear un nuevo reporte (usuario reporta una reserva)
     async createReport(req, res) {
         try {
-            const { id_reserva, razon, descripcion } = req.body;
-            const id_usuario_reporta = req.body.id_usuario_reporta; // En producción: req.user.id
+            console.log('📝 Creando reporte - Body recibido:', req.body);
+            const { id_reserva, razon, descripcion, id_usuario_reporta } = req.body;
 
-            if (!id_reserva || !razon || !descripcion || !id_usuario_reporta) {
+            // Validaciones específicas
+            if (!id_reserva) {
+                console.log('❌ Falta id_reserva');
                 return res.status(400).json({
                     success: false,
-                    message: 'Faltan datos requeridos'
+                    message: 'Falta el ID de la reserva'
                 });
             }
 
+            if (!id_usuario_reporta || id_usuario_reporta === 0) {
+                console.log('❌ Falta id_usuario_reporta o es 0:', id_usuario_reporta);
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se pudo identificar al usuario que reporta'
+                });
+            }
+
+            if (!razon) {
+                console.log('❌ Falta razon/motivo');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Debe seleccionar un motivo para el reporte'
+                });
+            }
+
+            console.log('✅ Datos válidos, creando reporte...');
             const result = await reportService.createReport({
                 id_reserva,
                 id_usuario_reporta,
                 razon,
                 descripcion
             });
+
+            console.log('✅ Reporte creado exitosamente:', result);
 
             res.status(201).json({
                 success: true,
@@ -28,7 +49,7 @@ class ReportController {
             });
 
         } catch (error) {
-            console.error('Error creando reporte:', error);
+            console.error('❌ Error creando reporte:', error);
             res.status(500).json({
                 success: false,
                 message: error.message || 'Error al crear reporte'
@@ -40,8 +61,10 @@ class ReportController {
     async getAllReports(req, res) {
         try {
             const { filtro } = req.query; // pendiente, revisado, sancionado, rechazado, todas
+            console.log('📊 getAllReports - Filtro recibido:', filtro);
 
             const reportes = await reportService.getAllReports(filtro);
+            console.log('📊 Reportes encontrados:', reportes.length);
 
             res.json({
                 success: true,
@@ -49,7 +72,7 @@ class ReportController {
             });
 
         } catch (error) {
-            console.error('Error obteniendo reportes:', error);
+            console.error('❌ Error obteniendo reportes:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error al obtener reportes'

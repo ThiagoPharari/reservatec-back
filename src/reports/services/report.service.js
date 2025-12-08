@@ -5,15 +5,30 @@ class ReportService {
     async createReport(reportData) {
         const { id_reserva, id_usuario_reporta, razon, descripcion } = reportData;
         
+        console.log('🔍 createReport - Datos recibidos:', reportData);
+        
         const connection = await db.getConnection();
         try {
             await connection.beginTransaction();
 
-            // Obtener el usuario dueño de la reserva reportada
+            // Obtener datos completos de la reserva reportada
+            console.log('🔍 Buscando reserva con id:', id_reserva);
             const [reserva] = await connection.query(
-                'SELECT id_usuario FROM reservas WHERE id_reserva = ?',
+                `SELECT 
+                    r.id_usuario,
+                    r.fecha,
+                    CONCAT(h.hora_inicio, '-', h.hora_fin) as horario,
+                    a.nombre as area,
+                    CONCAT(u.nombre, ' ', u.apellido) as nombre_reportado
+                FROM reservas r
+                INNER JOIN horarios h ON r.id_horario = h.id_horario
+                INNER JOIN areas a ON r.id_area = a.id_area
+                INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
+                WHERE r.id_reserva = ?`,
                 [id_reserva]
             );
+
+            console.log('🔍 Reserva encontrada:', reserva);
 
             if (!reserva || reserva.length === 0) {
                 throw new Error('Reserva no encontrada');
@@ -21,18 +36,39 @@ class ReportService {
 
             const id_usuario_reportado = reserva[0].id_usuario;
 
+            console.log('🔍 Usuario reportado:', id_usuario_reportado);
+
             // No permitir que un usuario se reporte a sí mismo
             if (id_usuario_reporta === id_usuario_reportado) {
                 throw new Error('No puedes reportar tu propia reserva');
             }
 
-            // Insertar el reporte
-            const [result] = await connection.query(
-                `INSERT INTO Reportes 
-                (id_reserva, id_usuario_reporta, id_usuario_reportado, razon, descripcion, estado, fecha_reporte)
-                VALUES (?, ?, ?, ?, ?, 'pendiente', NOW())`,
-                [id_reserva, id_usuario_reporta, id_usuario_reportado, razon, descripcion]
+            // Obtener nombre del usuario que reporta
+            const [usuarioReporta] = await connection.query(
+                'SELECT CONCAT(nombre, " ", apellido) as nombre_completo FROM usuarios WHERE id_usuario = ?',
+                [id_usuario_reporta]
             );
+
+            // Insertar el reporte en la tabla simplificada
+            console.log('🔍 Insertando reporte en DB...');
+            const [result] = await connection.query(
+                `INSERT INTO reportes_usuarios 
+                (id_reserva, id_usuario_reporta, nombre_reportante, nombre_reportado, motivo, descripcion, fecha_reserva, horario, area, estado, fecha_reporte)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', NOW())`,
+                [
+                    id_reserva, 
+                    id_usuario_reporta, 
+                    usuarioReporta[0]?.nombre_completo || 'Usuario',
+                    reserva[0].nombre_reportado,
+                    razon, 
+                    descripcion || '',
+                    reserva[0].fecha,
+                    reserva[0].horario,
+                    reserva[0].area
+                ]
+            );
+
+            console.log('✅ Reporte insertado con ID:', result.insertId);
 
             await connection.commit();
 
@@ -55,60 +91,40 @@ class ReportService {
         try {
             let query = `
                 SELECT 
-                    r.id_reporte,
-                    r.razon,
-                    r.descripcion,
-                    r.estado,
-                    r.fecha_reporte,
-                    r.fecha_revision,
-                    r.comentario_admin,
-                    
-                    -- Datos del usuario que reporta
-                    ur.nombre as reporta_nombre,
-                    ur.apellido as reporta_apellido,
-                    
-                    -- Datos del usuario reportado
-                    ure.nombre as reportado_nombre,
-                    ure.apellido as reportado_apellido,
-                    ure.dni as reportado_dni,
-                    ure.activo as reportado_activo,
-                    
-                    -- Datos de la reserva
-                    res.id_reserva,
-                    res.fecha as reserva_fecha,
-                    res.participantes,
-                    res.estado as reserva_estado,
-                    
-                    -- Datos del área
-                    a.nombre as area_nombre,
-                    
-                    -- Datos del horario
-                    h.hora_inicio,
-                    h.hora_fin,
-                    
-                    -- Admin que revisó
-                    ad.nombre as admin_nombre,
-                    ad.apellido as admin_apellido
-                    
-                FROM Reportes r
-                INNER JOIN usuarios ur ON r.id_usuario_reporta = ur.id_usuario
-                INNER JOIN usuarios ure ON r.id_usuario_reportado = ure.id_usuario
-                INNER JOIN reservas res ON r.id_reserva = res.id_reserva
-                INNER JOIN Areas a ON res.id_area = a.id_area
-                INNER JOIN Horarios h ON res.id_horario = h.id_horario
-                LEFT JOIN Administradores ad ON r.id_admin_revisa = ad.id_admin
+                    id_reporte,
+                    id_reserva,
+                    nombre_reportante,
+                    nombre_reportado,
+                    motivo as razon,
+                    descripcion,
+                    fecha_reserva,
+                    horario,
+                    area as area_nombre,
+                    estado,
+                    fecha_reporte,
+                    fecha_revision,
+                    comentario_admin
+                FROM reportes_usuarios
             `;
 
             const params = [];
 
             if (filtro && filtro !== 'todas') {
-                query += ' WHERE r.estado = ?';
+                query += ' WHERE estado = ?';
                 params.push(filtro);
             }
 
-            query += ' ORDER BY r.fecha_reporte DESC';
+            query += ' ORDER BY fecha_reporte DESC';
+
+            console.log('🔍 Query SQL:', query);
+            console.log('🔍 Params:', params);
 
             const [reportes] = await connection.query(query, params);
+
+            console.log('🔍 Reportes encontrados en DB:', reportes.length);
+            if (reportes.length > 0) {
+                console.log('🔍 Primer reporte:', reportes[0]);
+            }
 
             return reportes;
 
@@ -139,11 +155,11 @@ class ReportService {
                     h.hora_inicio,
                     h.hora_fin
                     
-                FROM Reportes r
+                FROM reportes r
                 INNER JOIN usuarios ur ON r.id_usuario_reporta = ur.id_usuario
                 INNER JOIN reservas res ON r.id_reserva = res.id_reserva
-                INNER JOIN Areas a ON res.id_area = a.id_area
-                INNER JOIN Horarios h ON res.id_horario = h.id_horario
+                INNER JOIN areas a ON res.id_area = a.id_area
+                INNER JOIN horarios h ON res.id_horario = h.id_horario
                 WHERE r.id_usuario_reportado = ?
                 ORDER BY r.fecha_reporte DESC`,
                 [userId]
@@ -164,7 +180,7 @@ class ReportService {
 
             // Obtener datos del reporte
             const [reporte] = await connection.query(
-                'SELECT id_usuario_reportado, id_reserva FROM Reportes WHERE id_reporte = ?',
+                'SELECT id_usuario_reportado, id_reserva FROM reportes WHERE id_reporte = ?',
                 [reporteId]
             );
 
@@ -176,14 +192,14 @@ class ReportService {
 
             // Suspender al usuario (activo = 0)
             await connection.query(
-                'UPDATE Usuarios SET activo = 0 WHERE id_usuario = ?',
+                'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?',
                 [id_usuario_reportado]
             );
 
             // Actualizar estado del reporte con el comentario del admin
             // El usuario podrá ver este comentario para saber por qué fue suspendido
             await connection.query(
-                `UPDATE Reportes 
+                `UPDATE reportes 
                 SET estado = 'sancionado', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
@@ -212,7 +228,7 @@ class ReportService {
         const connection = await db.getConnection();
         try {
             await connection.query(
-                `UPDATE Reportes 
+                `UPDATE reportes 
                 SET estado = 'rechazado', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
@@ -233,7 +249,7 @@ class ReportService {
         const connection = await db.getConnection();
         try {
             await connection.query(
-                `UPDATE Reportes 
+                `UPDATE reportes 
                 SET estado = 'revisado', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
@@ -271,11 +287,11 @@ class ReportService {
                     ad.nombre as admin_nombre,
                     ad.apellido as admin_apellido
                     
-                FROM Reportes r
+                FROM reportes r
                 INNER JOIN reservas res ON r.id_reserva = res.id_reserva
-                INNER JOIN Areas a ON res.id_area = a.id_area
-                INNER JOIN Horarios h ON res.id_horario = h.id_horario
-                LEFT JOIN Administradores ad ON r.id_admin_revisa = ad.id_admin
+                INNER JOIN areas a ON res.id_area = a.id_area
+                INNER JOIN horarios h ON res.id_horario = h.id_horario
+                LEFT JOIN administradores ad ON r.id_admin_revisa = ad.id_admin
                 WHERE r.id_usuario_reportado = ? 
                 AND r.estado = 'sancionado'
                 ORDER BY r.fecha_revision DESC`,

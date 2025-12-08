@@ -14,12 +14,13 @@ router.post('/usuarios/:id/suspender', userController.suspenderUsuario.bind(user
 router.post('/usuarios/:id/levantar-suspension', userController.levantarSuspension.bind(userController));
 router.get('/usuarios/suspendidos/lista', userController.getUsuariosSuspendidos.bind(userController));
 
+// Rutas públicas (sin autenticación requerida)
+router.get('/check-registration', userController.checkRegistrationStatus.bind(userController));
+router.get('/carreras', userController.getCarreras.bind(userController));
+router.post('/register', userController.registerUser.bind(userController));
+
 // Rutas protegidas con token
 router.use(validateToken); // Aplicar middleware de autenticación a todas las rutas siguientes
-
-router.get('/check-registration', userController.checkRegistrationStatus.bind(userController));
-router.post('/register', userController.registerUser.bind(userController));
-router.get('/carreras', userController.getCarreras.bind(userController));
 router.get('/:userId', userController.getUserById.bind(userController));
 router.put('/:userId', userController.updateUser.bind(userController));
 

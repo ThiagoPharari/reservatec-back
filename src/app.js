@@ -4,10 +4,14 @@ const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const authRoutes = require('./auth/routes/auth.routes');
 require('./auth/config/passport.config');
 
 const app = express();
+
+// Middleware de compresión para mejorar rendimiento
+app.use(compression());
 
 // Middleware
 app.use(cookieParser());
@@ -17,8 +21,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configuración de sesión (necesaria para Passport)
 app.use(session({

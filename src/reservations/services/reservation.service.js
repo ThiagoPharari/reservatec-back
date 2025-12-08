@@ -528,12 +528,13 @@ class ReservationService {
             SELECT 
                 r.id_reserva,
                 r.fecha,
-                r.num_participantes,
-                r.material_deportivo,
+                r.participantes,
+                r.material as material_deportivo,
                 r.estado,
                 CONCAT(h.hora_inicio, '-', h.hora_fin) as horario,
-                u.nombre as nombre_usuario,
-                u.correo
+                CONCAT(u.nombre, ' ', u.apellido) as nombre_usuario,
+                u.correo,
+                u.id_usuario
             FROM reservas r
             INNER JOIN horarios h ON r.id_horario = h.id_horario
             INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
