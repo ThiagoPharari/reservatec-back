@@ -11,7 +11,7 @@ class AreaService {
                        COALESCE(descripcion, '') as descripcion,
                        COALESCE(habilitada, 1) as habilitada, 
                        COALESCE(stock, 10) as stock
-                FROM Areas
+                FROM areas
                 ORDER BY id_area
             `);
 
@@ -22,12 +22,12 @@ class AreaService {
                 try {
                     const [dias] = await connection.query(`
                         SELECT dia_semana 
-                        FROM Area_Dias_Deshabilitados 
+                        FROM area_dias_deshabilitados 
                         WHERE id_area = ?
                     `, [area.id_area]);
                     diasDeshabilitados = dias.map(d => d.dia_semana);
                 } catch (error) {
-                    console.log('Tabla Area_Dias_Deshabilitados no existe aún:', error.message);
+                    console.log('Tabla area_dias_deshabilitados no existe aún:', error.message);
                 }
 
                 // Obtener horarios deshabilitados
@@ -35,12 +35,12 @@ class AreaService {
                 try {
                     const [horarios] = await connection.query(`
                         SELECT id_horario 
-                        FROM Area_Horarios_Deshabilitados 
+                        FROM area_horarios_deshabilitados 
                         WHERE id_area = ?
                     `, [area.id_area]);
                     horariosDeshabilitados = horarios.map(h => h.id_horario);
                 } catch (error) {
-                    console.log('Tabla Area_Horarios_Deshabilitados no existe aún:', error.message);
+                    console.log('Tabla area_horarios_deshabilitados no existe aún:', error.message);
                 }
 
                 return {
@@ -66,7 +66,7 @@ class AreaService {
             // Actualizar campos básicos del área
             if (config.hasOwnProperty('habilitada')) {
                 await connection.query(`
-                    UPDATE Areas 
+                    UPDATE areas 
                     SET habilitada = ? 
                     WHERE id_area = ?
                 `, [config.habilitada ? 1 : 0, areaId]);
@@ -74,7 +74,7 @@ class AreaService {
 
             if (config.hasOwnProperty('stock')) {
                 await connection.query(`
-                    UPDATE Areas 
+                    UPDATE areas 
                     SET stock = ? 
                     WHERE id_area = ?
                 `, [config.stock, areaId]);
@@ -84,7 +84,7 @@ class AreaService {
             if (config.hasOwnProperty('diasDeshabilitados')) {
                 // Eliminar todos los días anteriores
                 await connection.query(`
-                    DELETE FROM Area_Dias_Deshabilitados 
+                    DELETE FROM area_dias_deshabilitados 
                     WHERE id_area = ?
                 `, [areaId]);
 
@@ -92,7 +92,7 @@ class AreaService {
                 if (config.diasDeshabilitados.length > 0) {
                     const values = config.diasDeshabilitados.map(dia => [areaId, dia]);
                     await connection.query(`
-                        INSERT INTO Area_Dias_Deshabilitados (id_area, dia_semana) 
+                        INSERT INTO area_dias_deshabilitados (id_area, dia_semana) 
                         VALUES ?
                     `, [values]);
                 }
@@ -102,7 +102,7 @@ class AreaService {
             if (config.hasOwnProperty('horariosDeshabilitados')) {
                 // Eliminar todos los horarios anteriores
                 await connection.query(`
-                    DELETE FROM Area_Horarios_Deshabilitados 
+                    DELETE FROM area_horarios_deshabilitados 
                     WHERE id_area = ?
                 `, [areaId]);
 
@@ -110,7 +110,7 @@ class AreaService {
                 if (config.horariosDeshabilitados.length > 0) {
                     const values = config.horariosDeshabilitados.map(horario => [areaId, horario]);
                     await connection.query(`
-                        INSERT INTO Area_Horarios_Deshabilitados (id_area, id_horario) 
+                        INSERT INTO area_horarios_deshabilitados (id_area, id_horario) 
                         VALUES ?
                     `, [values]);
                 }
@@ -132,7 +132,7 @@ class AreaService {
         try {
             // Verificar si el área está habilitada
             const [area] = await connection.query(`
-                SELECT habilitada FROM Areas WHERE id_area = ?
+                SELECT habilitada FROM areas WHERE id_area = ?
             `, [areaId]);
 
             if (area.length === 0 || !area[0].habilitada) {
@@ -147,7 +147,7 @@ class AreaService {
             // Verificar si el día está deshabilitado
             const [diaDeshabilitado] = await connection.query(`
                 SELECT COUNT(*) as count 
-                FROM Area_Dias_Deshabilitados 
+                FROM area_dias_deshabilitados 
                 WHERE id_area = ? AND dia_semana = ?
             `, [areaId, diaSemana]);
 
@@ -158,7 +158,7 @@ class AreaService {
             // Verificar si el horario está deshabilitado
             const [horarioDeshabilitado] = await connection.query(`
                 SELECT COUNT(*) as count 
-                FROM Area_Horarios_Deshabilitados 
+                FROM area_horarios_deshabilitados 
                 WHERE id_area = ? AND id_horario = ?
             `, [areaId, horarioId]);
 

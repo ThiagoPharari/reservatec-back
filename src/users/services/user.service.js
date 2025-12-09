@@ -92,7 +92,7 @@ class UserService {
     }
 
     async getCarreras() {
-        const [carreras] = await db.query('SELECT * FROM Carreras');
+        const [carreras] = await db.query('SELECT * FROM carreras');
         return carreras;
     }
 
@@ -112,8 +112,8 @@ class UserService {
                     WHEN u.activo = 1 THEN 'activo'
                     ELSE 'suspendido'
                 END as estado
-            FROM Usuarios u
-            INNER JOIN Carreras c ON u.id_carrera = c.id_carrera
+            FROM usuarios u
+            INNER JOIN carreras c ON u.id_carrera = c.id_carrera
             ORDER BY u.nombre, u.apellido
         `);
         return usuarios;
@@ -124,7 +124,7 @@ class UserService {
         const activoValue = estado === 'activo' ? 1 : 0;
         
         const [result] = await db.query(
-            'UPDATE Usuarios SET activo = ? WHERE id_usuario = ?',
+            'UPDATE usuarios SET activo = ? WHERE id_usuario = ?',
             [activoValue, userId]
         );
 

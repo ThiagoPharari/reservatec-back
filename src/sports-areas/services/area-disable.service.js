@@ -69,7 +69,7 @@ class AreaDisableService {
 
             // Verificar que el área existe
             const [area] = await connection.query(
-                'SELECT id_area, nombre, habilitada FROM Areas WHERE id_area = ?',
+                'SELECT id_area, nombre, habilitada FROM areas WHERE id_area = ?',
                 [areaId]
             );
 
@@ -87,7 +87,7 @@ class AreaDisableService {
 
             // Actualizar el área
             await connection.query(
-                `UPDATE Areas 
+                `UPDATE areas 
                 SET habilitada = FALSE,
                     fecha_deshabilitacion = ?,
                     fecha_fin_deshabilitacion = ?,
@@ -99,7 +99,7 @@ class AreaDisableService {
 
             // Cancelar todas las reservas pendientes y futuras de esta área
             const [reservasCanceladas] = await connection.query(
-                `UPDATE Reservas 
+                `UPDATE reservas 
                 SET estado = 'rechazado',
                     comentario_encargado = 'Área deshabilitada. Motivo: ${motivo}'
                 WHERE id_area = ? 
@@ -139,7 +139,7 @@ class AreaDisableService {
         try {
             // Verificar que el área existe y está deshabilitada
             const [area] = await connection.query(
-                'SELECT id_area, nombre, habilitada FROM Areas WHERE id_area = ?',
+                'SELECT id_area, nombre, habilitada FROM areas WHERE id_area = ?',
                 [areaId]
             );
 
@@ -153,7 +153,7 @@ class AreaDisableService {
 
             // Habilitar el área y limpiar campos de deshabilitación
             await connection.query(
-                `UPDATE Areas 
+                `UPDATE areas 
                 SET habilitada = TRUE,
                     fecha_deshabilitacion = NULL,
                     fecha_fin_deshabilitacion = NULL,
@@ -196,8 +196,8 @@ class AreaDisableService {
                         WHEN a.fecha_fin_deshabilitacion < NOW() THEN 'Expirado'
                         ELSE 'Activo'
                     END as estado_deshabilitacion
-                FROM Areas a
-                LEFT JOIN Usuarios u ON a.deshabilitada_por = u.id_usuario
+                FROM areas a
+                LEFT JOIN usuarios u ON a.deshabilitada_por = u.id_usuario
                 WHERE a.habilitada = FALSE
                 ORDER BY a.fecha_deshabilitacion DESC`
             );
@@ -220,7 +220,7 @@ class AreaDisableService {
         try {
             // Habilitar áreas cuya fecha de fin ha pasado
             const [resultado] = await connection.query(
-                `UPDATE Areas 
+                `UPDATE areas 
                 SET habilitada = TRUE,
                     fecha_deshabilitacion = NULL,
                     fecha_fin_deshabilitacion = NULL,

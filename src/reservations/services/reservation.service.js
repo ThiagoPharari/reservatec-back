@@ -95,7 +95,7 @@ class ReservationService {
             // VALIDACIÓN: Verificar que el día no esté deshabilitado
             const [diaDeshabilitado] = await connection.query(`
                 SELECT COUNT(*) as count 
-                FROM Area_Dias_Deshabilitados 
+                FROM area_dias_deshabilitados 
                 WHERE id_area = ? AND dia_semana = ?
             `, [reservaData.id_area, diaSemana]);
 
@@ -106,7 +106,7 @@ class ReservationService {
             // NUEVA VALIDACIÓN: Verificar que el horario no esté deshabilitado
             const [horarioDeshabilitado] = await connection.query(`
                 SELECT COUNT(*) as count 
-                FROM Area_Horarios_Deshabilitados 
+                FROM area_horarios_deshabilitados 
                 WHERE id_area = ? AND id_horario = ?
             `, [reservaData.id_area, reservaData.id_horario]);
 
@@ -196,7 +196,7 @@ class ReservationService {
             INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
             INNER JOIN areas a ON r.id_area = a.id_area
             INNER JOIN horarios h ON r.id_horario = h.id_horario
-            LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
+            LEFT JOIN comentarios c ON r.id_comentario = c.id_comentario
             WHERE r.estado = ?
             ORDER BY r.fecha DESC, h.hora_inicio ASC
         `, [estado]);
@@ -271,7 +271,7 @@ class ReservationService {
             INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
             INNER JOIN areas a ON r.id_area = a.id_area
             INNER JOIN horarios h ON r.id_horario = h.id_horario
-            LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
+            LEFT JOIN comentarios c ON r.id_comentario = c.id_comentario
             WHERE u.correo = ?
             ORDER BY r.fecha DESC, h.hora_inicio ASC
         `, [userEmail]);
@@ -379,13 +379,13 @@ class ReservationService {
 
             // 3. Suspender al usuario (activo = 0)
             await connection.query(
-                'UPDATE Usuarios SET activo = 0 WHERE id_usuario = ?',
+                'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?',
                 [usuario.id_usuario]
             );
 
             // 4. Verificar si el admin existe en la tabla Administradores
             const [adminExists] = await connection.query(
-                'SELECT id_admin FROM Administradores WHERE id_admin = ?',
+                'SELECT id_admin FROM administradores WHERE id_admin = ?',
                 [adminId]
             );
 
@@ -394,7 +394,7 @@ class ReservationService {
             // 5. Crear un reporte automático para registrar la sanción
             // El usuario podrá ver el motivo de la suspensión consultando sus reportes sancionados
             await connection.query(`
-                INSERT INTO Reportes 
+                INSERT INTO reportes 
                 (id_reserva, id_usuario_reporta, id_usuario_reportado, razon, descripcion, estado, fecha_reporte, fecha_revision, id_admin_revisa, comentario_admin)
                 VALUES (?, ?, ?, 'Material no devuelto', ?, 'sancionado', NOW(), NOW(), ?, ?)
             `, [
@@ -462,7 +462,7 @@ class ReservationService {
             INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
             INNER JOIN areas a ON r.id_area = a.id_area
             INNER JOIN horarios h ON r.id_horario = h.id_horario
-            LEFT JOIN Comentarios c ON r.id_comentario = c.id_comentario
+            LEFT JOIN comentarios c ON r.id_comentario = c.id_comentario
             WHERE ${whereClause}
             ORDER BY r.fecha DESC, h.hora_inicio ASC
         `);
@@ -485,10 +485,10 @@ class ReservationService {
                 a.nombre as area_nombre,
                 adm.nombre as admin_nombre,
                 adm.apellido as admin_apellido
-            FROM Reportes r
+            FROM reportes r
             LEFT JOIN reservas res ON r.id_reserva = res.id_reserva
             LEFT JOIN areas a ON res.id_area = a.id_area
-            LEFT JOIN Administradores adm ON r.id_admin_revisa = adm.id_admin
+            LEFT JOIN administradores adm ON r.id_admin_revisa = adm.id_admin
             WHERE r.id_usuario_reportado = ? AND r.estado = 'sancionado'
             ORDER BY r.fecha_revision DESC
         `, [userId]);
@@ -504,7 +504,7 @@ class ReservationService {
 
             // Activar usuario (cambiar activo de 0 a 1)
             await connection.query(
-                'UPDATE Usuarios SET activo = 1 WHERE id_usuario = ?',
+                'UPDATE usuarios SET activo = 1 WHERE id_usuario = ?',
                 [userId]
             );
 

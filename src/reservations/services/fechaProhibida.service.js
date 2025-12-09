@@ -236,7 +236,7 @@ class FechaProhibidaService {
                 descripcion,
                 activo,
                 fecha_creacion
-            FROM Fechas_Prohibidas
+            FROM fechas_prohibidas
             WHERE activo = TRUE
             ORDER BY fecha_inicio DESC
         `);
@@ -259,7 +259,7 @@ class FechaProhibidaService {
                 const data = dto.getData();
 
                 const [result] = await connection.query(
-                    `INSERT INTO Fechas_Prohibidas 
+                    `INSERT INTO fechas_prohibidas 
                     (nombre_evento, fecha_inicio, fecha_fin, descripcion, activo) 
                     VALUES (?, ?, ?, ?, ?)`,
                     [data.nombre_evento, data.fecha_inicio, data.fecha_fin, data.descripcion, data.activo]
@@ -286,7 +286,7 @@ class FechaProhibidaService {
      */
     async eliminarFechaProhibida(id) {
         const [result] = await db.query(
-            'DELETE FROM Fechas_Prohibidas WHERE id_fecha_prohibida = ?',
+            'DELETE FROM fechas_prohibidas WHERE id_fecha_prohibida = ?',
             [id]
         );
 
@@ -307,7 +307,7 @@ class FechaProhibidaService {
                 nombre_evento,
                 fecha_inicio,
                 fecha_fin
-            FROM Fechas_Prohibidas
+            FROM fechas_prohibidas
             WHERE activo = TRUE
             AND ? BETWEEN fecha_inicio AND fecha_fin
             LIMIT 1
@@ -337,7 +337,7 @@ class FechaProhibidaService {
                 fecha_inicio,
                 fecha_fin,
                 descripcion
-            FROM Fechas_Prohibidas
+            FROM fechas_prohibidas
             WHERE activo = TRUE
             AND (
                 (fecha_inicio BETWEEN ? AND ?)
@@ -356,7 +356,7 @@ class FechaProhibidaService {
     async obtenerTodasLasFechasProhibidas() {
         const [rangos] = await db.query(`
             SELECT fecha_inicio, fecha_fin, nombre_evento
-            FROM Fechas_Prohibidas
+            FROM fechas_prohibidas
             WHERE activo = TRUE
         `);
 
