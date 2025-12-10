@@ -91,30 +91,58 @@ class ReportService {
         try {
             let query = `
                 SELECT 
-                    id_reporte,
-                    id_reserva,
-                    nombre_reportante,
-                    nombre_reportado,
-                    motivo as razon,
-                    descripcion,
-                    fecha_reserva,
-                    horario,
-                    area as area_nombre,
-                    estado,
-                    fecha_reporte,
-                    fecha_revision,
-                    comentario_admin
-                FROM reportes_usuarios
+                    ru.id_reporte,
+                    ru.id_reserva,
+                    ru.motivo as razon,
+                    ru.descripcion,
+                    ru.fecha_reserva,
+                    ru.horario,
+                    ru.area as area_nombre,
+                    ru.estado,
+                    ru.fecha_reporte,
+                    ru.fecha_revision,
+                    ru.comentario_admin,
+                    
+                    -- Usuario que reporta
+                    ur.nombre as reporta_nombre,
+                    ur.apellido as reporta_apellido,
+                    ur.foto as reporta_foto,
+                    
+                    -- Usuario reportado (de la reserva)
+                    res.id_usuario as id_usuario_reportado,
+                    u.nombre as reportado_nombre,
+                    u.apellido as reportado_apellido,
+                    u.dni as reportado_dni,
+                    u.activo as reportado_activo,
+                    
+                    -- Información de la reserva
+                    res.participantes,
+                    res.estado as reserva_estado,
+                    
+                    -- Horario separado
+                    h.hora_inicio,
+                    h.hora_fin,
+                    
+                    -- Admin que revisó
+                    ua.nombre as admin_nombre,
+                    ua.apellido as admin_apellido
+                    
+                FROM reportes_usuarios ru
+                INNER JOIN reservas res ON ru.id_reserva = res.id_reserva
+                INNER JOIN usuarios u ON res.id_usuario = u.id_usuario
+                LEFT JOIN usuarios ur ON ru.id_usuario_reporta = ur.id_usuario
+                LEFT JOIN horarios h ON res.id_horario = h.id_horario
+                LEFT JOIN usuarios ua ON ru.id_admin = ua.id_usuario
             `;
 
             const params = [];
 
             if (filtro && filtro !== 'todas') {
-                query += ' WHERE estado = ?';
+                query += ' WHERE ru.estado = ?';
                 params.push(filtro);
             }
 
-            query += ' ORDER BY fecha_reporte DESC';
+            query += ' ORDER BY ru.fecha_reporte DESC';
 
             console.log('🔍 Query SQL:', query);
             console.log('🔍 Params:', params);
