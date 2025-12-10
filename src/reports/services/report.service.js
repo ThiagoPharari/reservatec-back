@@ -93,6 +93,8 @@ class ReportService {
                 SELECT 
                     ru.id_reporte,
                     ru.id_reserva,
+                    ru.nombre_reportante,
+                    ru.nombre_reportado,
                     ru.motivo as razon,
                     ru.descripcion,
                     ru.fecha_reserva,
@@ -103,15 +105,14 @@ class ReportService {
                     ru.fecha_revision,
                     ru.comentario_admin,
                     
-                    -- Usuario que reporta
+                    -- Usuario que reporta (JOIN adicional)
                     ur.nombre as reporta_nombre,
                     ur.apellido as reporta_apellido,
                     ur.foto as reporta_foto,
                     
-                    -- Usuario reportado (de la reserva)
-                    res.id_usuario as id_usuario_reportado,
-                    u.nombre as reportado_nombre,
-                    u.apellido as reportado_apellido,
+                    -- Usuario reportado (extraer de nombre_reportado si falla el JOIN)
+                    COALESCE(u.nombre, SUBSTRING_INDEX(ru.nombre_reportado, ' ', 1)) as reportado_nombre,
+                    COALESCE(u.apellido, SUBSTRING_INDEX(ru.nombre_reportado, ' ', -1)) as reportado_apellido,
                     u.dni as reportado_dni,
                     u.activo as reportado_activo,
                     
@@ -119,20 +120,15 @@ class ReportService {
                     res.participantes,
                     res.estado as reserva_estado,
                     
-                    -- Horario separado
-                    h.hora_inicio,
-                    h.hora_fin,
-                    
-                    -- Admin que revisó
-                    ua.nombre as admin_nombre,
-                    ua.apellido as admin_apellido
+                    -- Horario (extraer de campo horario si no hay JOIN)
+                    COALESCE(h.hora_inicio, TRIM(SUBSTRING_INDEX(REPLACE(ru.horario, '-', ' - '), ' - ', 1))) as hora_inicio,
+                    COALESCE(h.hora_fin, TRIM(SUBSTRING_INDEX(REPLACE(ru.horario, '-', ' - '), ' - ', -1))) as hora_fin
                     
                 FROM reportes_usuarios ru
-                INNER JOIN reservas res ON ru.id_reserva = res.id_reserva
-                INNER JOIN usuarios u ON res.id_usuario = u.id_usuario
+                LEFT JOIN reservas res ON ru.id_reserva = res.id_reserva
+                LEFT JOIN usuarios u ON res.id_usuario = u.id_usuario
                 LEFT JOIN usuarios ur ON ru.id_usuario_reporta = ur.id_usuario
                 LEFT JOIN horarios h ON res.id_horario = h.id_horario
-                LEFT JOIN usuarios ua ON ru.id_admin = ua.id_usuario
             `;
 
             const params = [];
@@ -206,9 +202,12 @@ class ReportService {
         try {
             await connection.beginTransaction();
 
-            // Obtener datos del reporte
+            // Obtener datos del reporte y el usuario reportado
             const [reporte] = await connection.query(
-                'SELECT id_usuario_reportado, id_reserva FROM reportes WHERE id_reporte = ?',
+                `SELECT ru.id_reserva, res.id_usuario as id_usuario_reportado
+                 FROM reportes_usuarios ru
+                 INNER JOIN reservas res ON ru.id_reserva = res.id_reserva
+                 WHERE ru.id_reporte = ?`,
                 [reporteId]
             );
 
@@ -227,8 +226,8 @@ class ReportService {
             // Actualizar estado del reporte con el comentario del admin
             // El usuario podrá ver este comentario para saber por qué fue suspendido
             await connection.query(
-                `UPDATE reportes 
-                SET estado = 'sancionado', 
+                `UPDATE reportes_usuarios 
+                SET estado = 'resuelto', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
                     comentario_admin = ?
@@ -256,7 +255,7 @@ class ReportService {
         const connection = await db.getConnection();
         try {
             await connection.query(
-                `UPDATE reportes 
+                `UPDATE reportes_usuarios 
                 SET estado = 'rechazado', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
@@ -277,7 +276,7 @@ class ReportService {
         const connection = await db.getConnection();
         try {
             await connection.query(
-                `UPDATE reportes 
+                `UPDATE reportes_usuarios 
                 SET estado = 'revisado', 
                     fecha_revision = NOW(), 
                     id_admin_revisa = ?,
