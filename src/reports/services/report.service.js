@@ -108,7 +108,6 @@ class ReportService {
                     -- Usuario que reporta (JOIN adicional)
                     ur.nombre as reporta_nombre,
                     ur.apellido as reporta_apellido,
-                    ur.foto as reporta_foto,
                     
                     -- Usuario reportado (extraer de nombre_reportado si falla el JOIN)
                     COALESCE(u.nombre, SUBSTRING_INDEX(ru.nombre_reportado, ' ', 1)) as reportado_nombre,
