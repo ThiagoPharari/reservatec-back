@@ -163,6 +163,66 @@ class DashboardService {
                 ORDER BY YEAR(fecha), mes_num
             `);
 
+            // Reservas por día de la semana (última semana)
+            const [reservasSemanales] = await connection.query(`
+                SELECT 
+                    CASE DAYOFWEEK(fecha)
+                        WHEN 1 THEN 'Dom'
+                        WHEN 2 THEN 'Lun'
+                        WHEN 3 THEN 'Mar'
+                        WHEN 4 THEN 'Mié'
+                        WHEN 5 THEN 'Jue'
+                        WHEN 6 THEN 'Vie'
+                        WHEN 7 THEN 'Sáb'
+                    END as dia,
+                    COUNT(*) as cantidad
+                FROM reservas
+                WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+                GROUP BY DAYOFWEEK(fecha), dia
+                ORDER BY DAYOFWEEK(fecha)
+            `);
+
+            // Total de reservas (todos los tiempos)
+            const [totalReservasQuery] = await connection.query(`
+                SELECT COUNT(*) as total FROM reservas
+            `);
+
+            // Usuarios activos (que tienen al menos una reserva)
+            const [usuariosActivosQuery] = await connection.query(`
+                SELECT COUNT(DISTINCT id_usuario) as total
+                FROM reservas
+                WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+            `);
+
+            // Área más popular (más reservada)
+            const [areaMasPopularQuery] = await connection.query(`
+                SELECT 
+                    a.nombre,
+                    COUNT(r.id_reserva) as total_reservas,
+                    ROUND(COUNT(r.id_reserva) * 100.0 / (SELECT COUNT(*) FROM reservas), 2) as porcentaje
+                FROM areas a
+                LEFT JOIN reservas r ON a.id_area = r.id_area
+                GROUP BY a.id_area, a.nombre
+                ORDER BY total_reservas DESC
+                LIMIT 1
+            `);
+
+            // Calcular variaciones (comparar último mes con mes anterior)
+            const [variacionReservasQuery] = await connection.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM reservas WHERE fecha >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) as mes_actual,
+                    (SELECT COUNT(*) FROM reservas WHERE fecha BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)) as mes_anterior
+            `);
+
+            const mesActual = variacionReservasQuery[0].mes_actual || 0;
+            const mesAnterior = variacionReservasQuery[0].mes_anterior || 0;
+            const variacionReservas = mesAnterior > 0 ? Math.round(((mesActual - mesAnterior) / mesAnterior) * 100) : 0;
+
+            // Total de reportes
+            const [reportesQuery] = await connection.query(`
+                SELECT COUNT(*) as total FROM reportes
+            `);
+
             return {
                 // Datos en tiempo real - panel principal
                 reservasActivas: reservasActivas[0].total,
@@ -175,7 +235,20 @@ class DashboardService {
                 actividadSistema: actividadFormateada,
                 
                 // Datos históricos - para gráficos
-                reservasMensuales: reservasMensuales
+                reservasMensuales: reservasMensuales,
+                reservasSemanales: reservasSemanales,
+                
+                // Métricas adicionales
+                totalReservas: totalReservasQuery[0].total,
+                usuariosActivos: usuariosActivosQuery[0].total,
+                areaMasPopular: areaMasPopularQuery[0] ? {
+                    nombre: areaMasPopularQuery[0].nombre,
+                    porcentaje: areaMasPopularQuery[0].porcentaje
+                } : { nombre: 'N/A', porcentaje: 0 },
+                variacionReservas: variacionReservas,
+                reportes: reportesQuery[0].total,
+                variacionReportes: 0, // Puedes calcular esto también si quieres
+                variacionUsuarios: 0  // Puedes calcular esto también si quieres
             };
 
         } finally {
