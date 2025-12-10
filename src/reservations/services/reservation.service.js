@@ -4,7 +4,7 @@ class ReservationService {
     // Obtener todas las áreas deportivas
     async getAreas() {
         const [areas] = await db.query(`
-            SELECT id_area, nombre 
+            SELECT id_area, nombre, habilitada
             FROM areas 
             ORDER BY nombre
         `);
