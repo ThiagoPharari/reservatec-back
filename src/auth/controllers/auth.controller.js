@@ -18,52 +18,25 @@ const handleGoogleCallback = (req, res) => {
   // Generar token con el email, rol y userId
   const token = generateToken(email, role, userId);
   
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true, // Siempre true en producción
-    sameSite: 'none', // Permitir cross-site
-    path: '/',
-    maxAge: 3600000 // 1 hora
+  // Codificar los datos del usuario
+  const userData = {
+    email,
+    role,
+    nombre,
+    apellido,
+    picture
   };
   
-  console.log('🔐 [AUTH] Cookie options:', cookieOptions);
+  // Redirigir al frontend con el token y datos en la URL (método temporal)
+  // El frontend establecerá las cookies en su propio dominio
+  const params = new URLSearchParams({
+    token: token,
+    userData: JSON.stringify(userData)
+  });
   
-  // Establecer el token como una cookie http-only
-  res.cookie('jwt', token, cookieOptions);
-
-  // Establecer la URL de la imagen en una cookie accesible por JavaScript
-  if (picture) {
-    res.cookie('userPicture', picture, {
-      httpOnly: false,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-      maxAge: 3600000 // 1 hora
-    });
-  }
-
-  // Establecer el correo y rol en una cookie accesible por JavaScript
-  if (email) {
-    const userData = JSON.stringify({ 
-      email, 
-      role,
-      nombre,
-      apellido
-    });
-    res.cookie('userData', userData, {
-      httpOnly: false,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-      maxAge: 3600000 // 1 hora
-    });
-    console.log('🔐 [AUTH] userData cookie set:', userData);
-  }
+  const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?${params.toString()}`;
   
-  // Redirigir a una página intermedia de callback que verificará las cookies
-  const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback`;
-  
-  console.log('🔐 [AUTH] Redirecting to:', redirectUrl);
+  console.log('🔐 [AUTH] Redirecting to frontend with token');
   res.redirect(redirectUrl);
 };
 
