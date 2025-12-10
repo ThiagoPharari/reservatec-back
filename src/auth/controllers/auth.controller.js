@@ -18,7 +18,8 @@ const handleGoogleCallback = (req, res) => {
   res.cookie('jwt', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
     maxAge: 3600000 // 1 hora
   });
 
@@ -27,7 +28,8 @@ const handleGoogleCallback = (req, res) => {
     res.cookie('userPicture', picture, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
       maxAge: 3600000 // 1 hora
     });
   }
@@ -43,7 +45,8 @@ const handleGoogleCallback = (req, res) => {
     res.cookie('userData', userData, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
       maxAge: 3600000 // 1 hora
     });
   }
