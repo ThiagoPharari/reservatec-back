@@ -11,25 +11,33 @@ const generateToken = (email, role, userId) => {
 const handleGoogleCallback = (req, res) => {
   const { email, picture, role, userId, nombre, apellido } = req.user;
   
+  console.log('🔐 [AUTH] Google callback - User:', { email, role, userId });
+  console.log('🔐 [AUTH] NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔐 [AUTH] FRONTEND_URL:', process.env.FRONTEND_URL);
+  
   // Generar token con el email, rol y userId
   const token = generateToken(email, role, userId);
   
-  // Establecer el token como una cookie http-only
-  res.cookie('jwt', token, {
+  const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
+    secure: true, // Siempre true en producción
+    sameSite: 'none', // Permitir cross-site
+    path: '/',
     maxAge: 3600000 // 1 hora
-  });
+  };
+  
+  console.log('🔐 [AUTH] Cookie options:', cookieOptions);
+  
+  // Establecer el token como una cookie http-only
+  res.cookie('jwt', token, cookieOptions);
 
   // Establecer la URL de la imagen en una cookie accesible por JavaScript
   if (picture) {
     res.cookie('userPicture', picture, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
       maxAge: 3600000 // 1 hora
     });
   }
@@ -44,19 +52,19 @@ const handleGoogleCallback = (req, res) => {
     });
     res.cookie('userData', userData, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      domain: process.env.NODE_ENV === 'production' ? '.duckdns.org' : undefined,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
       maxAge: 3600000 // 1 hora
     });
+    console.log('🔐 [AUTH] userData cookie set:', userData);
   }
   
-  // Redirigir según el rol del usuario
-  if (role === 'encargado') {
-    res.redirect(`${process.env.FRONTEND_URL}/encargado`);
-  } else {
-    res.redirect(`${process.env.FRONTEND_URL}/user-info`);
-  }
+  // Redirigir a una página intermedia de callback que verificará las cookies
+  const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback`;
+  
+  console.log('🔐 [AUTH] Redirecting to:', redirectUrl);
+  res.redirect(redirectUrl);
 };
 
 const handleAuthFailure = (req, res) => {
