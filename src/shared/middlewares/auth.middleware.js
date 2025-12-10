@@ -3,10 +3,19 @@ const db = require('../../database/connection');
 
 const validateToken = async (req, res, next) => {
     try {
-        // Obtener el token de las cookies
-        const token = req.cookies.jwt;
+        // Obtener el token de las cookies o del header Authorization
+        let token = req.cookies.jwt;
+        
+        // Si no hay token en cookies, buscar en el header Authorization
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7); // Remover 'Bearer ' del inicio
+            }
+        }
         
         if (!token) {
+            console.log('❌ [AUTH] No token found in cookies or Authorization header');
             return res.status(401).json({
                 success: false,
                 message: 'No token provided'
@@ -15,6 +24,7 @@ const validateToken = async (req, res, next) => {
 
         // Verificar el token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('✅ [AUTH] Token verified for user:', decoded.email);
         
         // Si es encargado, usar el userId del token
         if (decoded.role === 'encargado') {

@@ -363,11 +363,19 @@ class FechaProhibidaService {
         const fechasProhibidas = [];
 
         rangos.forEach(rango => {
-            const inicio = new Date(rango.fecha_inicio);
-            const fin = new Date(rango.fecha_fin);
+            // Parsear fechas usando componentes UTC para evitar offset
+            const [anioInicio, mesInicio, diaInicio] = rango.fecha_inicio.split('-').map(Number);
+            const [anioFin, mesFin, diaFin] = rango.fecha_fin.split('-').map(Number);
             
-            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
-                const fechaStr = d.toISOString().split('T')[0];
+            const inicio = new Date(Date.UTC(anioInicio, mesInicio - 1, diaInicio));
+            const fin = new Date(Date.UTC(anioFin, mesFin - 1, diaFin));
+            
+            for (let d = new Date(inicio); d <= fin; d.setUTCDate(d.getUTCDate() + 1)) {
+                const year = d.getUTCFullYear();
+                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                const fechaStr = `${year}-${month}-${day}`;
+                
                 fechasProhibidas.push({
                     fecha: fechaStr,
                     evento: rango.nombre_evento
