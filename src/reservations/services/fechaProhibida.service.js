@@ -363,18 +363,45 @@ class FechaProhibidaService {
         const fechasProhibidas = [];
 
         rangos.forEach(rango => {
-            // Parsear fechas usando componentes UTC para evitar offset
-            const [anioInicio, mesInicio, diaInicio] = rango.fecha_inicio.split('-').map(Number);
-            const [anioFin, mesFin, diaFin] = rango.fecha_fin.split('-').map(Number);
+            // Convertir fechas a string YYYY-MM-DD si son objetos Date
+            let fechaInicioStr, fechaFinStr;
             
-            const inicio = new Date(Date.UTC(anioInicio, mesInicio - 1, diaInicio));
-            const fin = new Date(Date.UTC(anioFin, mesFin - 1, diaFin));
+            if (rango.fecha_inicio instanceof Date) {
+                const year = rango.fecha_inicio.getFullYear();
+                const month = String(rango.fecha_inicio.getMonth() + 1).padStart(2, '0');
+                const day = String(rango.fecha_inicio.getDate()).padStart(2, '0');
+                fechaInicioStr = `${year}-${month}-${day}`;
+            } else {
+                fechaInicioStr = rango.fecha_inicio;
+            }
             
-            for (let d = new Date(inicio); d <= fin; d.setUTCDate(d.getUTCDate() + 1)) {
-                const year = d.getUTCFullYear();
-                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(d.getUTCDate()).padStart(2, '0');
+            if (rango.fecha_fin instanceof Date) {
+                const year = rango.fecha_fin.getFullYear();
+                const month = String(rango.fecha_fin.getMonth() + 1).padStart(2, '0');
+                const day = String(rango.fecha_fin.getDate()).padStart(2, '0');
+                fechaFinStr = `${year}-${month}-${day}`;
+            } else {
+                fechaFinStr = rango.fecha_fin;
+            }
+            
+            console.log('📅 [BACKEND] Procesando rango:', fechaInicioStr, 'a', fechaFinStr, '-', rango.nombre_evento);
+            
+            // Parsear las fechas string
+            const [anioInicio, mesInicio, diaInicio] = fechaInicioStr.split('-').map(Number);
+            const [anioFin, mesFin, diaFin] = fechaFinStr.split('-').map(Number);
+            
+            // Crear fechas usando solo los componentes (sin timezone)
+            const inicio = new Date(anioInicio, mesInicio - 1, diaInicio);
+            const fin = new Date(anioFin, mesFin - 1, diaFin);
+            
+            // Iterar por cada día en el rango
+            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
                 const fechaStr = `${year}-${month}-${day}`;
+                
+                console.log('📅 [BACKEND] Agregando fecha individual:', fechaStr);
                 
                 fechasProhibidas.push({
                     fecha: fechaStr,
@@ -383,6 +410,7 @@ class FechaProhibidaService {
             }
         });
 
+        console.log('📅 [BACKEND] Total fechas prohibidas generadas:', fechasProhibidas.length);
         return fechasProhibidas;
     }
 }
